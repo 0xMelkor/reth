@@ -24,7 +24,7 @@ pub(crate) struct InactivePeers {
 impl InactivePeers {
     pub(crate) fn new(network: NetworkHandle) -> Self {
         Self {
-            inactivity_threshold: Duration::from_secs(60),
+            inactivity_threshold: Duration::from_secs(60 * 3),
             network,
             interval: tokio::time::interval(Duration::from_secs(1)),
             last_activity: Default::default(),
