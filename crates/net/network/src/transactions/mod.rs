@@ -37,6 +37,10 @@ use tokio::sync::{mpsc, oneshot, oneshot::error::RecvError};
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
 use tracing::{debug, trace};
 
+use self::inactive_peers::InactivePeers;
+
+mod inactive_peers;
+
 /// Cache limit of transactions to keep track of for a single peer.
 const PEER_TRANSACTION_CACHE_LIMIT: usize = 1024 * 10;
 
@@ -170,6 +174,7 @@ pub struct TransactionsManager<Pool> {
     transaction_events: UnboundedMeteredReceiver<NetworkTransactionEvent>,
     /// TransactionsManager metrics
     metrics: TransactionsManagerMetrics,
+    inactive_peers: InactivePeers,
 }
 
 impl<Pool: TransactionPool> TransactionsManager<Pool> {
@@ -187,7 +192,7 @@ impl<Pool: TransactionPool> TransactionsManager<Pool> {
         // install a listener for new pending transactions that are allowed to be propagated over
         // the network
         let pending = pool.pending_transactions_listener();
-
+        let inactive_peers = InactivePeers::new(network.clone());
         Self {
             pool,
             network,
@@ -204,6 +209,7 @@ impl<Pool: TransactionPool> TransactionsManager<Pool> {
                 NETWORK_POOL_TRANSACTIONS_SCOPE,
             ),
             metrics: Default::default(),
+            inactive_peers,
         }
     }
 }
@@ -530,6 +536,8 @@ where
                 // ensure we didn't receive any blob transactions as these are disallowed to be
                 // broadcasted in full
 
+                self.inactive_peers.track_activity(peer_id);
+
                 let has_blob_txs = msg.has_eip4844();
 
                 let non_blob_txs = msg
@@ -545,9 +553,11 @@ where
                 }
             }
             NetworkTransactionEvent::IncomingPooledTransactionHashes { peer_id, msg } => {
+                self.inactive_peers.track_activity(peer_id);
                 self.on_new_pooled_transaction_hashes(peer_id, msg)
             }
             NetworkTransactionEvent::GetPooledTransactions { peer_id, request, response } => {
+                self.inactive_peers.track_activity(peer_id);
                 self.on_get_pooled_transactions(peer_id, request, response)
             }
         }
@@ -590,11 +600,14 @@ where
             NetworkEvent::SessionClosed { peer_id, .. } => {
                 // remove the peer
                 self.peers.remove(&peer_id);
+                self.inactive_peers.stop_tracking(peer_id);
             }
             NetworkEvent::SessionEstablished {
                 peer_id, client_version, messages, version, ..
             } => {
                 // insert a new peer into the peerset
+                self.inactive_peers.start_tracking(peer_id);
+
                 self.peers.insert(
                     peer_id,
                     Peer {
@@ -725,6 +738,11 @@ where
         self.network.reputation_change(peer_id, ReputationChangeKind::AlreadySeenTransaction);
     }
 
+    fn report_inactive_peer(&self, peer_id: PeerId) {
+        trace!(target: "net::tx", ?peer_id, "Penalizing peer inactivity");
+        self.network.reputation_change(peer_id, ReputationChangeKind::BadProtocol);
+    }
+
     /// Clear the transaction
     fn on_good_import(&mut self, hash: TxHash) {
         self.transactions_by_peers.remove(&hash);
@@ -822,6 +840,10 @@ where
         }
         if !new_txs.is_empty() {
             this.on_new_transactions(new_txs);
+        }
+
+        while let Poll::Ready(Some(peer_id)) = this.inactive_peers.poll_next_unpin(cx) {
+            this.report_inactive_peer(peer_id);
         }
 
         // all channels are fully drained and import futures pending
