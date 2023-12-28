@@ -173,7 +173,7 @@ impl DatabaseEnv {
             // We disable readahead because it improves performance for linear scans, but
             // worsens it for random access (which is our access pattern outside of sync)
             no_rdahead: true,
-            coalesce: true,
+            coalesce: false,
             ..Default::default()
         });
         // configure more readers
@@ -204,32 +204,24 @@ impl DatabaseEnv {
         // because we want to prioritize freelist lookup speed over database growth.
         // https://github.com/paradigmxyz/reth/blob/fa2b9b685ed9787636d962f4366caf34a9186e66/crates/storage/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c#L16017.
         inner_env.set_rp_augment_limit(256 * 1024);
+        inner_env.set_log_level(7);
 
-        if let Some(log_level) = log_level {
-            // Levels higher than [LogLevel::Notice] require libmdbx built with `MDBX_DEBUG` option.
-            let is_log_level_available = if cfg!(debug_assertions) {
-                true
-            } else {
-                matches!(
-                    log_level,
-                    LogLevel::Fatal | LogLevel::Error | LogLevel::Warn | LogLevel::Notice
-                )
-            };
-            if is_log_level_available {
-                inner_env.set_log_level(match log_level {
-                    LogLevel::Fatal => 0,
-                    LogLevel::Error => 1,
-                    LogLevel::Warn => 2,
-                    LogLevel::Notice => 3,
-                    LogLevel::Verbose => 4,
-                    LogLevel::Debug => 5,
-                    LogLevel::Trace => 6,
-                    LogLevel::Extra => 7,
-                });
-            } else {
-                return Err(DatabaseError::LogLevelUnavailable(log_level));
-            }
-        }
+        // if let Some(log_level) = log_level {
+        //     // Levels higher than [LogLevel::Notice] require libmdbx built with `MDBX_DEBUG` option.
+        //     let is_log_level_available = if cfg!(debug_assertions) {
+        //         true
+        //     } else {
+        //         matches!(
+        //             log_level,
+        //             LogLevel::Fatal | LogLevel::Error | LogLevel::Warn | LogLevel::Notice
+        //         )
+        //     };
+        //     if is_log_level_available {
+        //         inner_env.set_log_level(7);
+        //     } else {
+        //         return Err(DatabaseError::LogLevelUnavailable(log_level));
+        //     }
+        // }
 
         let env = DatabaseEnv {
             inner: inner_env.open(path).map_err(|e| DatabaseError::Open(e.into()))?,
