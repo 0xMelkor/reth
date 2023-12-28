@@ -102,6 +102,8 @@ impl Command {
             // TODO: We'll need to add this on the DB trait.
             Subcommands::Stats { .. } => {
                 let db = open_db_read_only(&db_path, self.db.log_level)?;
+
+                println!("OPENED");
                 let tool = DbTool::new(&db, self.chain.clone())?;
                 let mut stats_table = ComfyTable::new();
                 stats_table.load_preset(comfy_table::presets::ASCII_MARKDOWN);

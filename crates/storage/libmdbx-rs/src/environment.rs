@@ -622,6 +622,8 @@ impl EnvironmentBuilder {
         let mut env = EnvironmentInner { env, txn_manager: None, env_kind: self.kind };
 
         if let Mode::ReadWrite { .. } = self.flags.mode {
+            println!("********* ReadWrite");
+
             let (tx, rx) = std::sync::mpsc::sync_channel(0);
             let e = EnvPtr(env.env);
             std::thread::spawn(move || loop {
@@ -668,6 +670,7 @@ impl EnvironmentBuilder {
             env.txn_manager = Some(tx);
         }
 
+        println!("*********  Ok(Environment inner: Arc::new(env) )");
         Ok(Environment { inner: Arc::new(env) })
     }
 
