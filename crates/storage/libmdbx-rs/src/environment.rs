@@ -513,7 +513,7 @@ impl EnvironmentBuilder {
     ///
     /// Database files will be opened with 644 permissions.
     pub fn open(&self, path: &Path) -> Result<Environment> {
-        self.open_with_permissions(path, 0o644)
+        self.open_with_permissions(path, 0o444)
     }
 
     /// Open an environment with the provided UNIX permissions.
