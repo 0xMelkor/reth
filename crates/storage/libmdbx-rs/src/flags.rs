@@ -156,9 +156,13 @@ impl EnvironmentFlags {
         if self.accede {
             flags |= ffi::MDBX_ACCEDE;
         }
+        println!("******* EXCLUSIVE {:?}", self.exclusive);
+
+        println!("******* MODE {:?}", self.mode);
 
         match self.mode {
             Mode::ReadOnly => {
+                println!("******* we are readonly {:?}", self.mode);
                 flags |= ffi::MDBX_RDONLY;
             }
             Mode::ReadWrite { sync_mode } => {
