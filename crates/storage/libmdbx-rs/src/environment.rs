@@ -607,7 +607,7 @@ impl EnvironmentBuilder {
                 mdbx_result(ffi::mdbx_env_open(
                     env,
                     path.as_ptr(),
-                    self.flags.make_flags() | self.kind.extra_flags(),
+                    self.flags.make_flags() /*| self.kind.extra_flags()*/,
                     mode,
                 ))?;
 

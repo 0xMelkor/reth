@@ -145,54 +145,54 @@ impl EnvironmentFlags {
     pub(crate) fn make_flags(&self) -> ffi::MDBX_env_flags_t {
         let mut flags = 0;
 
-        if self.no_sub_dir {
-            flags |= ffi::MDBX_NOSUBDIR;
-        }
+        // if self.no_sub_dir {
+        //     flags |= ffi::MDBX_NOSUBDIR;
+        // }
 
-        if self.exclusive {
-            flags |= ffi::MDBX_EXCLUSIVE;
-        }
+        // if self.exclusive {
+        //     flags |= ffi::MDBX_EXCLUSIVE;
+        // }
 
-        if self.accede {
-            flags |= ffi::MDBX_ACCEDE;
-        }
-        println!("******* EXCLUSIVE {:?}", self.exclusive);
+        // if self.accede {
+        //     flags |= ffi::MDBX_ACCEDE;
+        // }
+        // println!("******* EXCLUSIVE {:?}", self.exclusive);
 
-        println!("******* MODE {:?}", self.mode);
+        // println!("******* MODE {:?}", self.mode);
 
-        match self.mode {
-            Mode::ReadOnly => {
-                println!("******* we are readonly {:?}", self.mode);
-                flags |= ffi::MDBX_RDONLY;
-            }
-            Mode::ReadWrite { sync_mode } => {
-                flags |= match sync_mode {
-                    SyncMode::Durable => ffi::MDBX_SYNC_DURABLE,
-                    SyncMode::NoMetaSync => ffi::MDBX_NOMETASYNC,
-                    SyncMode::SafeNoSync => ffi::MDBX_SAFE_NOSYNC,
-                    SyncMode::UtterlyNoSync => ffi::MDBX_UTTERLY_NOSYNC,
-                };
-            }
-        }
+        // match self.mode {
+        //     Mode::ReadOnly => {
+        //         println!("******* we are readonly {:?}", self.mode);
+        //         flags |= ffi::MDBX_RDONLY;
+        //     }
+        //     Mode::ReadWrite { sync_mode } => {
+        //         flags |= match sync_mode {
+        //             SyncMode::Durable => ffi::MDBX_SYNC_DURABLE,
+        //             SyncMode::NoMetaSync => ffi::MDBX_NOMETASYNC,
+        //             SyncMode::SafeNoSync => ffi::MDBX_SAFE_NOSYNC,
+        //             SyncMode::UtterlyNoSync => ffi::MDBX_UTTERLY_NOSYNC,
+        //         };
+        //     }
+        // }
 
-        if self.no_rdahead {
-            flags |= ffi::MDBX_NORDAHEAD;
-        }
+        // if self.no_rdahead {
+        //     flags |= ffi::MDBX_NORDAHEAD;
+        // }
 
-        if self.no_meminit {
-            flags |= ffi::MDBX_NOMEMINIT;
-        }
+        // if self.no_meminit {
+        //     flags |= ffi::MDBX_NOMEMINIT;
+        // }
 
-        if self.coalesce {
-            flags |= ffi::MDBX_COALESCE;
-        }
+        // if self.coalesce {
+        //     flags |= ffi::MDBX_COALESCE;
+        // }
 
-        if self.liforeclaim {
-            flags |= ffi::MDBX_LIFORECLAIM;
-        }
+        // if self.liforeclaim {
+        //     flags |= ffi::MDBX_LIFORECLAIM;
+        // }
 
-        flags |= ffi::MDBX_NOTLS;
-
+        // flags |= ffi::MDBX_NOTLS;
+        flags |= ffi::MDBX_RDONLY;
         flags
     }
 }
