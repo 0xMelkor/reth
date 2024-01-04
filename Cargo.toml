@@ -45,7 +45,6 @@ members = [
     "crates/storage/libmdbx-rs/mdbx-sys/",
     "crates/storage/nippy-jar/",
     "crates/storage/provider/",
-    "crates/storage/rocksdb/",
     "crates/tasks/",
     "crates/tokio-util/",
     "crates/tracing/",
@@ -113,7 +112,6 @@ reth-interfaces = { path = "crates/interfaces" }
 reth-ipc = { path = "crates/rpc/ipc" }
 reth-libmdbx = { path = "crates/storage/libmdbx-rs" }
 reth-mdbx-sys = { path = "crates/storage/libmdbx-rs/mdbx-sys" }
-reth-rocksdb = { path = "crates/storage/rocksdb" }
 reth-metrics = { path = "crates/metrics" }
 reth-metrics-derive = { path = "crates/metrics/metrics-derive" }
 reth-net-common = { path = "crates/net/common" }

@@ -5849,7 +5849,6 @@ dependencies = [
  "reth-metrics",
  "reth-nippy-jar",
  "reth-primitives",
- "reth-rocksdb",
  "reth-tracing",
  "secp256k1 0.27.0",
  "serde",
@@ -6408,13 +6407,6 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "reth-rocksdb"
-version = "0.1.0-alpha.13"
-dependencies = [
- "thiserror",
 ]
 
 [[package]]

@@ -93,6 +93,15 @@ use eyre::WrapErr;
 use reth_interfaces::db::LogLevel;
 use std::path::Path;
 
+/// TODO DOCS
+#[derive(Debug)]
+pub enum DatabaseEnvironment {
+    /// TODO DOCS
+    MBDX(DatabaseEnv),
+    /// TODO DOCS
+    RocksDB(mock::DatabaseMock),
+}
+
 /// Opens up an existing database or creates a new one at the specified path. Creates tables if
 /// necessary. Read/Write mode.
 pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<DatabaseEnv> {
@@ -110,13 +119,13 @@ pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Re
             Err(err) => return Err(err.into()),
         }
     }
-    #[cfg(feature = "mdbx")]
+    #[cfg(all(feature = "mdbx", not(feature = "rocksdb")))]
     {
         let db = DatabaseEnv::open(rpath, DatabaseEnvKind::RW, log_level)?;
         db.create_tables()?;
         Ok(db)
     }
-    #[cfg(not(feature = "mdbx"))]
+    #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
     {
         unimplemented!();
     }
@@ -124,12 +133,12 @@ pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Re
 
 /// Opens up an existing database. Read only mode. It doesn't create it or create tables if missing.
 pub fn open_db_read_only(path: &Path, log_level: Option<LogLevel>) -> eyre::Result<DatabaseEnv> {
-    #[cfg(feature = "mdbx")]
+    #[cfg(all(feature = "mdbx", not(feature = "rocksdb")))]
     {
         DatabaseEnv::open(path, DatabaseEnvKind::RO, log_level)
             .with_context(|| format!("Could not open database at path: {}", path.display()))
     }
-    #[cfg(not(feature = "mdbx"))]
+    #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
     {
         unimplemented!();
     }
@@ -138,12 +147,12 @@ pub fn open_db_read_only(path: &Path, log_level: Option<LogLevel>) -> eyre::Resu
 /// Opens up an existing database. Read/Write mode with WriteMap enabled. It doesn't create it or
 /// create tables if missing.
 pub fn open_db(path: &Path, log_level: Option<LogLevel>) -> eyre::Result<DatabaseEnv> {
-    #[cfg(feature = "mdbx")]
+    #[cfg(all(feature = "mdbx", not(feature = "rocksdb")))]
     {
         DatabaseEnv::open(path, DatabaseEnvKind::RW, log_level)
             .with_context(|| format!("Could not open database at path: {}", path.display()))
     }
-    #[cfg(not(feature = "mdbx"))]
+    #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
     {
         unimplemented!();
     }

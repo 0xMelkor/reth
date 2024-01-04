@@ -14,7 +14,6 @@ reth-primitives.workspace = true
 reth-interfaces.workspace = true
 reth-codecs.workspace = true
 reth-libmdbx = { workspace = true, optional = true, features = ["return-borrowed"] }
-reth-rocksdb = { workspace = true, optional = true }
 reth-nippy-jar.workspace = true
 reth-tracing.workspace = true
 
@@ -87,11 +86,11 @@ assert_matches.workspace = true
 vergen = { version = "8.0.0", features = ["git", "gitcl"] }
 
 [features]
-default = ["mdbx"]
+default = ["mdbx", "rocksdb"]
 test-utils = ["tempfile", "arbitrary"]
 bench-postcard = ["bench"]
 mdbx = ["reth-libmdbx"]
-rocksdb = ["reth-rocksdb"]
+rocksdb = []
 bench = []
 arbitrary = [
     "reth-primitives/arbitrary",
