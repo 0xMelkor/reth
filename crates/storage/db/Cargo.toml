@@ -14,6 +14,7 @@ reth-primitives.workspace = true
 reth-interfaces.workspace = true
 reth-codecs.workspace = true
 reth-libmdbx = { workspace = true, optional = true, features = ["return-borrowed"] }
+reth-rocksdb = { workspace = true, optional = true }
 reth-nippy-jar.workspace = true
 reth-tracing.workspace = true
 
@@ -90,13 +91,14 @@ default = ["mdbx"]
 test-utils = ["tempfile", "arbitrary"]
 bench-postcard = ["bench"]
 mdbx = ["reth-libmdbx"]
+rocksdb = ["reth-rocksdb"]
 bench = []
 arbitrary = [
     "reth-primitives/arbitrary",
     "dep:arbitrary",
     "dep:proptest",
     "dep:proptest-derive",
-]
+] 
 
 [[bench]]
 name = "hash_keys"
