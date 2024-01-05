@@ -1,9 +1,9 @@
-use std::ops::{Bound, RangeBounds};
+use std::{marker::PhantomData, ops::RangeBounds};
 
 use reth_interfaces::db::DatabaseError;
 
 use crate::{
-    common::{IterPairResult, PairResult, ValueOnlyResult},
+    common::{PairResult, ValueOnlyResult},
     cursor::{
         DbCursorRO, DbCursorRW, DbDupCursorRO, DbDupCursorRW, DupWalker, RangeWalker,
         ReverseWalker, Walker,
@@ -13,11 +13,39 @@ use crate::{
 
 /// Cursor that iterates over table
 #[derive(Debug)]
-pub struct Cursor {
-    pub _cursor: u32,
+pub struct Cursor<T: Table> {
+    cursor: u32,
+    _dbi: PhantomData<T>,
 }
 
-impl<T: Table> DbCursorRO<T> for Cursor {
+impl<T: Table> Cursor<T> {
+    pub fn new(cursor: u32) -> Self {
+        Self { cursor, _dbi: PhantomData }
+    }
+}
+
+impl<T: Table> DbCursorRO<T> for Cursor<T> {
+    fn start(
+        &mut self,
+        start_key: Option<<T as Table>::Key>,
+    ) -> Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>> {
+        todo!()
+    }
+
+    fn start_back(
+        &mut self,
+        start_key: Option<<T as Table>::Key>,
+    ) -> Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>> {
+        todo!()
+    }
+
+    fn start_range(
+        &mut self,
+        range: impl RangeBounds<<T as Table>::Key>,
+    ) -> Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>> {
+        todo!()
+    }
+    
     fn first(&mut self) -> PairResult<T> {
         Ok(None)
     }
@@ -46,50 +74,46 @@ impl<T: Table> DbCursorRO<T> for Cursor {
         Ok(None)
     }
 
-    fn walk(&mut self, start_key: Option<T::Key>) -> Result<Walker<'_, T, Self>, DatabaseError> {
-        let start: IterPairResult<T> = match start_key {
-            Some(key) => <Cursor as DbCursorRO<T>>::seek(self, key).transpose(),
-            None => <Cursor as DbCursorRO<T>>::first(self).transpose(),
-        };
-
-        Ok(Walker::new(self, start))
+    fn walk(
+        &mut self,
+        start_key: Option<<T as Table>::Key>,
+    ) -> Result<Walker<'_, T, Self>, DatabaseError>
+    where
+        Self: Sized,
+    {
+        todo!()
     }
 
     fn walk_range(
         &mut self,
-        range: impl RangeBounds<T::Key>,
-    ) -> Result<RangeWalker<'_, T, Self>, DatabaseError> {
-        let start_key = match range.start_bound() {
-            Bound::Included(key) | Bound::Excluded(key) => Some((*key).clone()),
-            Bound::Unbounded => None,
-        };
-
-        let end_key = match range.end_bound() {
-            Bound::Included(key) | Bound::Excluded(key) => Bound::Included((*key).clone()),
-            Bound::Unbounded => Bound::Unbounded,
-        };
-
-        let start: IterPairResult<T> = match start_key {
-            Some(key) => <Cursor as DbCursorRO<T>>::seek(self, key).transpose(),
-            None => <Cursor as DbCursorRO<T>>::first(self).transpose(),
-        };
-
-        Ok(RangeWalker::new(self, start, end_key))
+        range: impl RangeBounds<<T as Table>::Key>,
+    ) -> Result<RangeWalker<'_, T, Self>, DatabaseError>
+    where
+        Self: Sized,
+    {
+        todo!()
     }
 
     fn walk_back(
         &mut self,
-        start_key: Option<T::Key>,
-    ) -> Result<ReverseWalker<'_, T, Self>, DatabaseError> {
-        let start: IterPairResult<T> = match start_key {
-            Some(key) => <Cursor as DbCursorRO<T>>::seek(self, key).transpose(),
-            None => <Cursor as DbCursorRO<T>>::last(self).transpose(),
-        };
-        Ok(ReverseWalker::new(self, start))
+        start_key: Option<<T as Table>::Key>,
+    ) -> Result<ReverseWalker<'_, T, Self>, DatabaseError>
+    where
+        Self: Sized,
+    {
+        todo!()
     }
 }
 
-impl<T: DupSort> DbDupCursorRO<T> for Cursor {
+impl<T: DupSort> DbDupCursorRO<T> for Cursor<T> {
+    fn start_dup(
+        &mut self,
+        key: Option<<T>::Key>,
+        subkey: Option<<T as DupSort>::SubKey>,
+    ) -> Result<Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>>, DatabaseError>  {
+        todo!()
+    }
+    
     fn next_dup(&mut self) -> PairResult<T> {
         Ok(None)
     }
@@ -119,7 +143,7 @@ impl<T: DupSort> DbDupCursorRO<T> for Cursor {
     }
 }
 
-impl<T: Table> DbCursorRW<T> for Cursor {
+impl<T: Table> DbCursorRW<T> for Cursor<T> {
     fn upsert(
         &mut self,
         _key: <T as Table>::Key,
@@ -149,7 +173,7 @@ impl<T: Table> DbCursorRW<T> for Cursor {
     }
 }
 
-impl<T: DupSort> DbDupCursorRW<T> for Cursor {
+impl<T: DupSort> DbDupCursorRW<T> for Cursor<T> {
     fn delete_current_duplicates(&mut self) -> Result<(), DatabaseError> {
         Ok(())
     }

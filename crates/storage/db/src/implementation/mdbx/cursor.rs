@@ -83,6 +83,44 @@ macro_rules! compress_to_buf_or_ref {
 }
 
 impl<K: TransactionKind, T: Table> DbCursorRO<T> for Cursor<K, T> {
+    fn start(
+        &mut self,
+        start_key: Option<T::Key>,
+    ) -> Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>> {
+        if let Some(start_key) = start_key {
+            decode::<T>(self.inner.set_range(start_key.encode().as_ref())).transpose()
+        } else {
+            self.first().transpose()
+        }
+    }
+
+    fn start_back(
+        &mut self,
+        start_key: Option<T::Key>,
+    ) -> Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>> {
+        if let Some(start_key) = start_key {
+            decode::<T>(self.inner.set_range(start_key.encode().as_ref()))
+        } else {
+            self.last()
+        }
+        .transpose()
+    }
+
+    fn start_range(
+        &mut self,
+        range: impl RangeBounds<T::Key>,
+    ) -> Option<Result<(T::Key, T::Value), DatabaseError>> {
+        let start: Result<Option<(Cow<'_, [u8]>, Cow<'_, [u8]>)>, MDBXError> =
+            match range.start_bound().cloned() {
+                Bound::Included(key) => self.inner.set_range(key.encode().as_ref()),
+                Bound::Excluded(_key) => {
+                    unreachable!("Rust doesn't allow for Bound::Excluded in starting bounds");
+                }
+                Bound::Unbounded => self.inner.first(),
+            };
+        decode::<T>(start).transpose()
+    }
+
     fn first(&mut self) -> PairResult<T> {
         decode::<T>(self.inner.first())
     }
@@ -112,12 +150,7 @@ impl<K: TransactionKind, T: Table> DbCursorRO<T> for Cursor<K, T> {
     }
 
     fn walk(&mut self, start_key: Option<T::Key>) -> Result<Walker<'_, T, Self>, DatabaseError> {
-        let start = if let Some(start_key) = start_key {
-            decode::<T>(self.inner.set_range(start_key.encode().as_ref())).transpose()
-        } else {
-            self.first().transpose()
-        };
-
+        let start = self.start(start_key);
         Ok(Walker::new(self, start))
     }
 
@@ -125,28 +158,16 @@ impl<K: TransactionKind, T: Table> DbCursorRO<T> for Cursor<K, T> {
         &mut self,
         range: impl RangeBounds<T::Key>,
     ) -> Result<RangeWalker<'_, T, Self>, DatabaseError> {
-        let start = match range.start_bound().cloned() {
-            Bound::Included(key) => self.inner.set_range(key.encode().as_ref()),
-            Bound::Excluded(_key) => {
-                unreachable!("Rust doesn't allow for Bound::Excluded in starting bounds");
-            }
-            Bound::Unbounded => self.inner.first(),
-        };
-        let start = decode::<T>(start).transpose();
-        Ok(RangeWalker::new(self, start, range.end_bound().cloned()))
+        let end_bound = range.end_bound().cloned();
+        let start = self.start_range(range);
+        Ok(RangeWalker::new(self, start, end_bound))
     }
 
     fn walk_back(
         &mut self,
         start_key: Option<T::Key>,
     ) -> Result<ReverseWalker<'_, T, Self>, DatabaseError> {
-        let start = if let Some(start_key) = start_key {
-            decode::<T>(self.inner.set_range(start_key.encode().as_ref()))
-        } else {
-            self.last()
-        }
-        .transpose();
-
+        let start = self.start_back(start_key);
         Ok(ReverseWalker::new(self, start))
     }
 }
@@ -183,17 +204,14 @@ impl<K: TransactionKind, T: DupSort> DbDupCursorRO<T> for Cursor<K, T> {
             .transpose()
     }
 
-    /// Depending on its arguments, returns an iterator starting at:
-    /// - Some(key), Some(subkey): a `key` item whose data is >= than `subkey`
-    /// - Some(key), None: first item of a specified `key`
-    /// - None, Some(subkey): like first case, but in the first key
-    /// - None, None: first item in the table
-    /// of a DUPSORT table.
-    fn walk_dup(
+    fn start_dup(
         &mut self,
         key: Option<T::Key>,
         subkey: Option<T::SubKey>,
-    ) -> Result<DupWalker<'_, T, Self>, DatabaseError> {
+    ) -> Result<
+        Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>>,
+        DatabaseError,
+    > {
         let start = match (key, subkey) {
             (Some(key), Some(subkey)) => {
                 // encode key and decode it after.
@@ -225,6 +243,21 @@ impl<K: TransactionKind, T: DupSort> DbDupCursorRO<T> for Cursor<K, T> {
             (None, None) => self.first().transpose(),
         };
 
+        Ok(start)
+    }
+
+    /// Depending on its arguments, returns an iterator starting at:
+    /// - Some(key), Some(subkey): a `key` item whose data is >= than `subkey`
+    /// - Some(key), None: first item of a specified `key`
+    /// - None, Some(subkey): like first case, but in the first key
+    /// - None, None: first item in the table
+    /// of a DUPSORT table.
+    fn walk_dup(
+        &mut self,
+        key: Option<T::Key>,
+        subkey: Option<T::SubKey>,
+    ) -> Result<DupWalker<'_, T, Self>, DatabaseError> {
+        let start = self.start_dup(key, subkey)?;
         Ok(DupWalker::<'_, T, Self> { cursor: self, start })
     }
 }

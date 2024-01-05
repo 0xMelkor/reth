@@ -15,8 +15,8 @@ pub struct Tx {
 impl TableImporter for Tx {}
 
 impl DbTx for Tx {
-    type Cursor<T: Table> = Cursor;
-    type DupCursor<T: DupSort> = Cursor;
+    type Cursor<T: Table> = Cursor<T>;
+    type DupCursor<T: DupSort> = Cursor<T>;
 
     fn get<T: Table>(&self, _key: T::Key) -> Result<Option<T::Value>, DatabaseError> {
         Ok(None)
@@ -29,11 +29,11 @@ impl DbTx for Tx {
     fn abort(self) {}
 
     fn cursor_read<T: Table>(&self) -> Result<Self::Cursor<T>, DatabaseError> {
-        Ok(Cursor { _cursor: 0 })
+        Ok(Cursor::new(0))
     }
 
     fn cursor_dup_read<T: DupSort>(&self) -> Result<Self::DupCursor<T>, DatabaseError> {
-        Ok(Cursor { _cursor: 0 })
+        Ok(Cursor::new(0))
     }
 
     fn entries<T: Table>(&self) -> Result<usize, DatabaseError> {
@@ -42,8 +42,8 @@ impl DbTx for Tx {
 }
 
 impl DbTxMut for Tx {
-    type CursorMut<T: Table> = Cursor;
-    type DupCursorMut<T: DupSort> = Cursor;
+    type CursorMut<T: Table> = Cursor<T>;
+    type DupCursorMut<T: DupSort> = Cursor<T>;
 
     fn put<T: Table>(&self, _key: T::Key, _value: T::Value) -> Result<(), DatabaseError> {
         Ok(())
@@ -62,10 +62,10 @@ impl DbTxMut for Tx {
     }
 
     fn cursor_write<T: Table>(&self) -> Result<Self::CursorMut<T>, DatabaseError> {
-        Ok(Cursor { _cursor: 0 })
+        Ok(Cursor::new(0))
     }
 
     fn cursor_dup_write<T: DupSort>(&self) -> Result<Self::DupCursorMut<T>, DatabaseError> {
-        Ok(Cursor { _cursor: 0 })
+        Ok(Cursor::new(0))
     }
 }

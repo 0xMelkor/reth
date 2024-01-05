@@ -175,6 +175,27 @@ impl<T: Table> DbCursorRO<T> for CursorMock {
         };
         Ok(ReverseWalker::new(self, start))
     }
+
+    fn start(
+        &mut self,
+        _start_key: Option<<T as Table>::Key>,
+    ) -> Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>> {
+        todo!()
+    }
+
+    fn start_back(
+        &mut self,
+        _start_key: Option<<T as Table>::Key>,
+    ) -> Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>> {
+        todo!()
+    }
+
+    fn start_range(
+        &mut self,
+        _range: impl RangeBounds<<T as Table>::Key>,
+    ) -> Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>> {
+        None
+    }
 }
 
 impl<T: DupSort> DbDupCursorRO<T> for CursorMock {
@@ -204,6 +225,17 @@ impl<T: DupSort> DbDupCursorRO<T> for CursorMock {
         _subkey: Option<<T as DupSort>::SubKey>,
     ) -> Result<DupWalker<'_, T, Self>, DatabaseError> {
         Ok(DupWalker { cursor: self, start: None })
+    }
+
+    fn start_dup(
+        &mut self,
+        _key: Option<<T>::Key>,
+        _subkey: Option<<T as DupSort>::SubKey>,
+    ) -> Result<
+        Option<Result<(<T as Table>::Key, <T as Table>::Value), DatabaseError>>,
+        DatabaseError,
+    > {
+        Ok(None)
     }
 }
 

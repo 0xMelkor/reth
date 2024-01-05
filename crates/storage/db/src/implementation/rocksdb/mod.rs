@@ -1,13 +1,14 @@
+use reth_interfaces::db::DatabaseError;
+
 use crate::database::Database;
 
 pub mod cursor;
 pub mod tx;
 
-
 /// Wrapper for the libmdbx environment: [Environment]
 #[derive(Debug)]
 pub struct DatabaseEnv {
-    inner: ()
+    inner: (),
 }
 
 impl Database for DatabaseEnv {

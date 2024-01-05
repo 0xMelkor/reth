@@ -81,30 +81,28 @@ pub mod mdbx {
     pub use reth_libmdbx::*;
 }
 
+#[cfg(feature = "rocksdb")]
+/// Bindings for [Rocksdb](https://github.com/facebook/rocksdb/).
+pub mod rocksdb {
+    pub use crate::implementation::rocksdb::*;
+}
+
 pub use abstraction::*;
+use implementation::common::DatabaseEnvironment;
 pub use reth_interfaces::db::{DatabaseError, DatabaseWriteOperation};
 pub use tables::*;
 pub use utils::is_database_empty;
-
-#[cfg(feature = "mdbx")]
-pub use mdbx::{DatabaseEnv, DatabaseEnvKind};
 
 use eyre::WrapErr;
 use reth_interfaces::db::LogLevel;
 use std::path::Path;
 
-/// TODO DOCS
-#[derive(Debug)]
-pub enum DatabaseEnvironment {
-    /// TODO DOCS
-    MBDX(DatabaseEnv),
-    /// TODO DOCS
-    RocksDB(mock::DatabaseMock),
-}
-
 /// Opens up an existing database or creates a new one at the specified path. Creates tables if
 /// necessary. Read/Write mode.
-pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<DatabaseEnv> {
+pub fn init_db<P: AsRef<Path>>(
+    path: P,
+    log_level: Option<LogLevel>,
+) -> eyre::Result<DatabaseEnvironment> {
     use crate::version::{check_db_version_file, create_db_version_file, DatabaseVersionError};
 
     let rpath = path.as_ref();
@@ -127,12 +125,17 @@ pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Re
     }
     #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
     {
-        unimplemented!();
+        let db = mdbx::DatabaseEnv::open(rpath, mdbx::DatabaseEnvKind::RW, log_level)?;
+        db.create_tables()?;
+        Ok(DatabaseEnvironment::MBDX(db))
     }
 }
 
 /// Opens up an existing database. Read only mode. It doesn't create it or create tables if missing.
-pub fn open_db_read_only(path: &Path, log_level: Option<LogLevel>) -> eyre::Result<DatabaseEnv> {
+pub fn open_db_read_only(
+    path: &Path,
+    log_level: Option<LogLevel>,
+) -> eyre::Result<DatabaseEnvironment> {
     #[cfg(all(feature = "mdbx", not(feature = "rocksdb")))]
     {
         DatabaseEnv::open(path, DatabaseEnvKind::RO, log_level)
@@ -140,13 +143,15 @@ pub fn open_db_read_only(path: &Path, log_level: Option<LogLevel>) -> eyre::Resu
     }
     #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
     {
-        unimplemented!();
+        let db = mdbx::DatabaseEnv::open(path, mdbx::DatabaseEnvKind::RO, log_level)
+            .with_context(|| format!("Could not open database at path: {}", path.display()))?;
+        Ok(DatabaseEnvironment::MBDX(db))
     }
 }
 
 /// Opens up an existing database. Read/Write mode with WriteMap enabled. It doesn't create it or
 /// create tables if missing.
-pub fn open_db(path: &Path, log_level: Option<LogLevel>) -> eyre::Result<DatabaseEnv> {
+pub fn open_db(path: &Path, log_level: Option<LogLevel>) -> eyre::Result<DatabaseEnvironment> {
     #[cfg(all(feature = "mdbx", not(feature = "rocksdb")))]
     {
         DatabaseEnv::open(path, DatabaseEnvKind::RW, log_level)
@@ -154,7 +159,9 @@ pub fn open_db(path: &Path, log_level: Option<LogLevel>) -> eyre::Result<Databas
     }
     #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
     {
-        unimplemented!();
+        let db = mdbx::DatabaseEnv::open(path, mdbx::DatabaseEnvKind::RW, log_level)
+            .with_context(|| format!("Could not open database at path: {}", path.display()))?;
+        Ok(DatabaseEnvironment::MBDX(db))
     }
 }
 
@@ -242,7 +249,7 @@ pub mod test_utils {
     }
 
     /// Create read/write database for testing
-    pub fn create_test_rw_db() -> Arc<TempDatabase<DatabaseEnv>> {
+    pub fn create_test_rw_db() -> Arc<TempDatabase<DatabaseEnvironment>> {
         let path = tempdir_path();
         let emsg = format!("{}: {:?}", ERROR_DB_CREATION, path);
 
@@ -252,14 +259,14 @@ pub mod test_utils {
     }
 
     /// Create read/write database for testing
-    pub fn create_test_rw_db_with_path<P: AsRef<Path>>(path: P) -> Arc<TempDatabase<DatabaseEnv>> {
+    pub fn create_test_rw_db_with_path<P: AsRef<Path>>(path: P) -> Arc<TempDatabase<DatabaseEnvironment>> {
         let path = path.as_ref().to_path_buf();
         let db = init_db(path.as_path(), None).expect(ERROR_DB_CREATION);
         Arc::new(TempDatabase { db: Some(db), path })
     }
 
     /// Create read only database for testing
-    pub fn create_test_ro_db() -> Arc<TempDatabase<DatabaseEnv>> {
+    pub fn create_test_ro_db() -> Arc<TempDatabase<DatabaseEnvironment>> {
         let path = tempdir_path();
         {
             init_db(path.as_path(), None).expect(ERROR_DB_CREATION);
