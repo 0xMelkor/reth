@@ -74,14 +74,14 @@ pub mod tables;
 mod utils;
 pub mod version;
 
-#[cfg(feature = "mdbx")]
+// #[cfg(feature = "mdbx")]
 /// Bindings for [MDBX](https://libmdbx.dqdkfa.ru/).
 pub mod mdbx {
     pub use crate::implementation::mdbx::*;
     pub use reth_libmdbx::*;
 }
 
-#[cfg(feature = "rocksdb")]
+// #[cfg(feature = "rocksdb")]
 /// Bindings for [Rocksdb](https://github.com/facebook/rocksdb/).
 pub mod rocksdb {
     pub use crate::implementation::rocksdb::*;
@@ -93,6 +93,7 @@ pub mod db_common {
 
 pub use abstraction::*;
 use implementation::common::DatabaseEnvironment;
+use mdbx::{DatabaseEnv, DatabaseEnvKind};
 pub use reth_interfaces::db::{DatabaseError, DatabaseWriteOperation};
 pub use tables::*;
 pub use utils::is_database_empty;
@@ -125,13 +126,13 @@ pub fn init_db<P: AsRef<Path>>(
     {
         let db = DatabaseEnv::open(rpath, DatabaseEnvKind::RW, log_level)?;
         db.create_tables()?;
-        Ok(db)
+        Ok(DatabaseEnvironment::MBDX(db))
     }
     #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
     {
-        let db = mdbx::DatabaseEnv::open(rpath, mdbx::DatabaseEnvKind::RW, log_level)?;
+        let db = rocksdb::DatabaseEnv::open(rpath, mdbx::DatabaseEnvKind::RW, log_level)?;
         db.create_tables()?;
-        Ok(DatabaseEnvironment::MBDX(db))
+        Ok(DatabaseEnvironment::RocksDB(db))
     }
 }
 
@@ -142,14 +143,15 @@ pub fn open_db_read_only(
 ) -> eyre::Result<DatabaseEnvironment> {
     #[cfg(all(feature = "mdbx", not(feature = "rocksdb")))]
     {
-        DatabaseEnv::open(path, DatabaseEnvKind::RO, log_level)
-            .with_context(|| format!("Could not open database at path: {}", path.display()))
+        let db = DatabaseEnv::open(path, DatabaseEnvKind::RO, log_level)
+            .with_context(|| format!("Could not open database at path: {}", path.display()))?;
+        Ok(DatabaseEnvironment::MBDX(db))
     }
     #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
     {
-        let db = mdbx::DatabaseEnv::open(path, mdbx::DatabaseEnvKind::RO, log_level)
+        let db = rocksdb::DatabaseEnv::open(path, mdbx::DatabaseEnvKind::RO, log_level)
             .with_context(|| format!("Could not open database at path: {}", path.display()))?;
-        Ok(DatabaseEnvironment::MBDX(db))
+        Ok(DatabaseEnvironment::RocksDB(db))
     }
 }
 
@@ -158,14 +160,15 @@ pub fn open_db_read_only(
 pub fn open_db(path: &Path, log_level: Option<LogLevel>) -> eyre::Result<DatabaseEnvironment> {
     #[cfg(all(feature = "mdbx", not(feature = "rocksdb")))]
     {
-        DatabaseEnv::open(path, DatabaseEnvKind::RW, log_level)
-            .with_context(|| format!("Could not open database at path: {}", path.display()))
-    }
-    #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
-    {
         let db = mdbx::DatabaseEnv::open(path, mdbx::DatabaseEnvKind::RW, log_level)
             .with_context(|| format!("Could not open database at path: {}", path.display()))?;
         Ok(DatabaseEnvironment::MBDX(db))
+    }
+    #[cfg(all(feature = "mdbx", feature = "rocksdb"))]
+    {
+        let db = rocksdb::DatabaseEnv::open(path, mdbx::DatabaseEnvKind::RW, log_level)
+            .with_context(|| format!("Could not open database at path: {}", path.display()))?;
+        Ok(DatabaseEnvironment::RocksDB(db))
     }
 }
 
