@@ -7,10 +7,10 @@ use reth_blockchain_tree::{
     config::BlockchainTreeConfig, externals::TreeExternals, BlockchainTree, ShareableBlockchainTree,
 };
 use reth_db::{
-    test_utils::{create_test_rw_db, TempDatabase},
-    DatabaseEnv as DE,
+    test_utils::{create_test_rw_db, TempDatabase}, db_common::DatabaseEnvironment,
 };
-type DatabaseEnv = TempDatabase<DE>;
+
+type DatabaseEnv = TempDatabase<DatabaseEnvironment>;
 use reth_downloaders::{
     bodies::bodies::BodiesDownloaderBuilder,
     headers::reverse_headers::ReverseHeadersDownloaderBuilder,

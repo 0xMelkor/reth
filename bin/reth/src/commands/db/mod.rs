@@ -14,7 +14,7 @@ use eyre::WrapErr;
 use human_bytes::human_bytes;
 use reth_db::{
     database::Database,
-    mdbx, open_db, open_db_read_only,
+    db_common, mdbx, open_db, open_db_read_only,
     version::{get_db_version, DatabaseVersionError, DB_VERSION},
     Tables,
 };
@@ -116,71 +116,82 @@ impl Command {
                 ]);
 
                 tool.db.view(|tx| {
-                    let mut tables =
-                        Tables::ALL.iter().map(|table| table.name()).collect::<Vec<_>>();
-                    tables.sort();
-                    let mut total_size = 0;
-                    for table in tables {
-                        let table_db =
-                            tx.inner.open_db(Some(table)).wrap_err("Could not open db.")?;
+                    match tx {
+                        db_common::tx::Tx::MBDXTx(tx) => {
+                            let mut tables =
+                                Tables::ALL.iter().map(|table| table.name()).collect::<Vec<_>>();
 
-                        let stats = tx
-                            .inner
-                            .db_stat(&table_db)
-                            .wrap_err(format!("Could not find table: {table}"))?;
+                            tables.sort();
 
-                        // Defaults to 16KB right now but we should
-                        // re-evaluate depending on the DB we end up using
-                        // (e.g. REDB does not have these options as configurable intentionally)
-                        let page_size = stats.page_size() as usize;
-                        let leaf_pages = stats.leaf_pages();
-                        let branch_pages = stats.branch_pages();
-                        let overflow_pages = stats.overflow_pages();
-                        let num_pages = leaf_pages + branch_pages + overflow_pages;
-                        let table_size = page_size * num_pages;
+                            let mut total_size = 0;
+                            for table in tables {
+                                let table_db =
+                                    tx.inner.open_db(Some(table)).wrap_err("Could not open db.")?;
 
-                        total_size += table_size;
-                        let mut row = Row::new();
-                        row.add_cell(Cell::new(table))
-                            .add_cell(Cell::new(stats.entries()))
-                            .add_cell(Cell::new(branch_pages))
-                            .add_cell(Cell::new(leaf_pages))
-                            .add_cell(Cell::new(overflow_pages))
-                            .add_cell(Cell::new(human_bytes(table_size as f64)));
-                        stats_table.add_row(row);
+                                let stats = tx
+                                    .inner
+                                    .db_stat(&table_db)
+                                    .wrap_err(format!("Could not find table: {table}"))?;
+
+                                // Defaults to 16KB right now but we should
+                                // re-evaluate depending on the DB we end up using
+                                // (e.g. REDB does not have these options as configurable intentionally)
+                                let page_size = stats.page_size() as usize;
+                                let leaf_pages = stats.leaf_pages();
+                                let branch_pages = stats.branch_pages();
+                                let overflow_pages = stats.overflow_pages();
+                                let num_pages = leaf_pages + branch_pages + overflow_pages;
+                                let table_size = page_size * num_pages;
+
+                                total_size += table_size;
+                                let mut row = Row::new();
+                                row.add_cell(Cell::new(table))
+                                    .add_cell(Cell::new(stats.entries()))
+                                    .add_cell(Cell::new(branch_pages))
+                                    .add_cell(Cell::new(leaf_pages))
+                                    .add_cell(Cell::new(overflow_pages))
+                                    .add_cell(Cell::new(human_bytes(table_size as f64)));
+                                stats_table.add_row(row);
+                            }
+
+                            let max_widths = stats_table.column_max_content_widths();
+
+                            let mut seperator = Row::new();
+                            for width in max_widths {
+                                seperator.add_cell(Cell::new("-".repeat(width as usize)));
+                            }
+                            stats_table.add_row(seperator);
+
+                            let mut row = Row::new();
+                            row.add_cell(Cell::new("Total DB size"))
+                                .add_cell(Cell::new(""))
+                                .add_cell(Cell::new(""))
+                                .add_cell(Cell::new(""))
+                                .add_cell(Cell::new(""))
+                                .add_cell(Cell::new(human_bytes(total_size as f64)));
+                            stats_table.add_row(row);
+
+                            let freelist = tx.inner.env().freelist()?;
+                            let freelist_size = freelist
+                                * tx.inner.db_stat(&mdbx::Database::freelist_db())?.page_size()
+                                    as usize;
+
+                            let mut row = Row::new();
+                            row.add_cell(Cell::new("Freelist size"))
+                                .add_cell(Cell::new(freelist))
+                                .add_cell(Cell::new(""))
+                                .add_cell(Cell::new(""))
+                                .add_cell(Cell::new(""))
+                                .add_cell(Cell::new(human_bytes(freelist_size as f64)));
+                            stats_table.add_row(row);
+
+                            Ok::<(), eyre::Report>(())
+                        }
+                        db_common::tx::Tx::RocksDBTx(_) => {
+                            // TODO: Implement for rocksdb
+                            todo!()
+                        }
                     }
-
-                    let max_widths = stats_table.column_max_content_widths();
-
-                    let mut seperator = Row::new();
-                    for width in max_widths {
-                        seperator.add_cell(Cell::new("-".repeat(width as usize)));
-                    }
-                    stats_table.add_row(seperator);
-
-                    let mut row = Row::new();
-                    row.add_cell(Cell::new("Total DB size"))
-                        .add_cell(Cell::new(""))
-                        .add_cell(Cell::new(""))
-                        .add_cell(Cell::new(""))
-                        .add_cell(Cell::new(""))
-                        .add_cell(Cell::new(human_bytes(total_size as f64)));
-                    stats_table.add_row(row);
-
-                    let freelist = tx.inner.env().freelist()?;
-                    let freelist_size = freelist *
-                        tx.inner.db_stat(&mdbx::Database::freelist_db())?.page_size() as usize;
-
-                    let mut row = Row::new();
-                    row.add_cell(Cell::new("Freelist size"))
-                        .add_cell(Cell::new(freelist))
-                        .add_cell(Cell::new(""))
-                        .add_cell(Cell::new(""))
-                        .add_cell(Cell::new(""))
-                        .add_cell(Cell::new(human_bytes(freelist_size as f64)));
-                    stats_table.add_row(row);
-
-                    Ok::<(), eyre::Report>(())
                 })??;
 
                 println!("{stats_table}");
@@ -212,7 +223,7 @@ impl Command {
 
                     if !input.trim().eq_ignore_ascii_case("y") {
                         println!("Database drop aborted!");
-                        return Ok(())
+                        return Ok(());
                     }
                 }
 

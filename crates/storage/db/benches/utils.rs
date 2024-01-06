@@ -2,8 +2,7 @@ use reth_db::{
     database::Database,
     table::{Compress, Encode, Table, TableRow},
     test_utils::create_test_rw_db_with_path,
-    transaction::DbTxMut,
-    DatabaseEnv,
+    transaction::{DbTxMut, DbTx as _}, db_common::DatabaseEnvironment,
 };
 use reth_primitives::{fs, Bytes};
 use std::{path::Path, sync::Arc};
@@ -52,7 +51,7 @@ where
 pub(crate) fn set_up_db<T>(
     bench_db_path: &Path,
     pair: &Vec<(<T as Table>::Key, Bytes, <T as Table>::Value, Bytes)>,
-) -> DatabaseEnv
+) -> DatabaseEnvironment
 where
     T: Table + Default,
     T::Key: Default + Clone,
@@ -68,7 +67,7 @@ where
         for (k, _, v, _) in pair.clone() {
             tx.put::<T>(k, v).expect("submit");
         }
-        tx.inner.commit().unwrap();
+        tx.commit().unwrap();
     }
 
     db.into_inner_db()

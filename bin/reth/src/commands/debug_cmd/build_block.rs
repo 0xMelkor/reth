@@ -18,7 +18,7 @@ use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree, TreeExternals,
 };
-use reth_db::{init_db, DatabaseEnv};
+use reth_db::{init_db, db_common::DatabaseEnvironment};
 use reth_interfaces::{consensus::Consensus, RethResult};
 use reth_payload_builder::{database::CachedReads, PayloadBuilderAttributes};
 use reth_primitives::{
@@ -104,7 +104,7 @@ impl Command {
     /// Fetches the best block block from the database.
     ///
     /// If the database is empty, returns the genesis block.
-    fn lookup_best_block(&self, db: Arc<DatabaseEnv>) -> RethResult<Arc<SealedBlock>> {
+    fn lookup_best_block(&self, db: Arc<DatabaseEnvironment>) -> RethResult<Arc<SealedBlock>> {
         let factory = ProviderFactory::new(db, self.chain.clone());
         let provider = factory.provider()?;
 

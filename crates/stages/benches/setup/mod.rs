@@ -3,8 +3,7 @@ use reth_db::{
     cursor::DbCursorRO,
     tables,
     test_utils::TempDatabase,
-    transaction::{DbTx, DbTxMut},
-    DatabaseEnv,
+    transaction::{DbTx, DbTxMut}, db_common::DatabaseEnvironment,
 };
 use reth_interfaces::test_utils::{
     generators,
@@ -33,7 +32,7 @@ pub use account_hashing::*;
 
 pub(crate) type StageRange = (ExecInput, UnwindInput);
 
-pub(crate) fn stage_unwind<S: Clone + Stage<Arc<TempDatabase<DatabaseEnv>>>>(
+pub(crate) fn stage_unwind<S: Clone + Stage<Arc<TempDatabase<DatabaseEnvironment>>>>(
     stage: S,
     db: &TestStageDB,
     range: StageRange,
@@ -59,7 +58,7 @@ pub(crate) fn stage_unwind<S: Clone + Stage<Arc<TempDatabase<DatabaseEnv>>>>(
     });
 }
 
-pub(crate) fn unwind_hashes<S: Clone + Stage<Arc<TempDatabase<DatabaseEnv>>>>(
+pub(crate) fn unwind_hashes<S: Clone + Stage<Arc<TempDatabase<DatabaseEnvironment>>>>(
     stage: S,
     db: &TestStageDB,
     range: StageRange,

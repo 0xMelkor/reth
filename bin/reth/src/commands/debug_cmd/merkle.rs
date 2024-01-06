@@ -14,7 +14,7 @@ use backon::{ConstantBuilder, Retryable};
 use clap::Parser;
 use reth_beacon_consensus::BeaconConsensus;
 use reth_config::Config;
-use reth_db::{cursor::DbCursorRO, init_db, tables, transaction::DbTx, DatabaseEnv};
+use reth_db::{cursor::DbCursorRO, init_db, tables, transaction::DbTx, db_common::DatabaseEnvironment};
 use reth_interfaces::{consensus::Consensus, p2p::full_block::FullBlockClient};
 use reth_network::NetworkHandle;
 use reth_network_api::NetworkInfo;
@@ -88,7 +88,7 @@ impl Command {
         &self,
         config: &Config,
         task_executor: TaskExecutor,
-        db: Arc<DatabaseEnv>,
+        db: Arc<DatabaseEnvironment>,
         network_secret_path: PathBuf,
         default_peers_path: PathBuf,
     ) -> eyre::Result<NetworkHandle> {

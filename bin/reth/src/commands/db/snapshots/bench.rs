@@ -1,4 +1,4 @@
-use reth_db::DatabaseEnv;
+use reth_db::db_common::DatabaseEnvironment;
 use reth_primitives::{
     snapshot::{Compression, Filters},
     ChainSpec, SnapshotSegment,
@@ -16,7 +16,7 @@ pub(crate) enum BenchKind {
 
 pub(crate) fn bench<F1, F2, R>(
     bench_kind: BenchKind,
-    db: (DatabaseEnv, Arc<ChainSpec>),
+    db: (DatabaseEnvironment, Arc<ChainSpec>),
     segment: SnapshotSegment,
     filters: Filters,
     compression: Compression,
@@ -25,7 +25,7 @@ pub(crate) fn bench<F1, F2, R>(
 ) -> eyre::Result<()>
 where
     F1: FnMut() -> eyre::Result<R>,
-    F2: Fn(DatabaseProviderRO<DatabaseEnv>) -> eyre::Result<R>,
+    F2: Fn(DatabaseProviderRO<DatabaseEnvironment>) -> eyre::Result<R>,
     R: Debug + PartialEq,
 {
     let (db, chain) = db;

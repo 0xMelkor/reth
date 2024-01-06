@@ -1282,7 +1282,7 @@ mod tests {
     use super::*;
     use assert_matches::assert_matches;
     use linked_hash_set::LinkedHashSet;
-    use reth_db::{tables, test_utils::TempDatabase, transaction::DbTxMut, DatabaseEnv};
+    use reth_db::{tables, test_utils::TempDatabase, transaction::DbTxMut, db_common::DatabaseEnvironment};
     use reth_interfaces::test_utils::TestConsensus;
     use reth_primitives::{
         constants::{EIP1559_INITIAL_BASE_FEE, EMPTY_ROOT_HASH, ETHEREUM_BLOCK_GAS_LIMIT},
@@ -1309,7 +1309,7 @@ mod tests {
 
     fn setup_externals(
         exec_res: Vec<BundleStateWithReceipts>,
-    ) -> TreeExternals<Arc<TempDatabase<DatabaseEnv>>, TestExecutorFactory> {
+    ) -> TreeExternals<Arc<TempDatabase<DatabaseEnvironment>>, TestExecutorFactory> {
         let chain_spec = Arc::new(
             ChainSpecBuilder::default()
                 .chain(MAINNET.chain)

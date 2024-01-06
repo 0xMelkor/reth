@@ -327,7 +327,7 @@ mod tests {
     mod test_runner {
         use super::*;
         use crate::test_utils::{TestRunnerError, TestStageDB};
-        use reth_db::{test_utils::TempDatabase, DatabaseEnv};
+        use reth_db::{test_utils::TempDatabase, db_common::DatabaseEnvironment};
         use reth_downloaders::headers::reverse_headers::{
             ReverseHeadersDownloader, ReverseHeadersDownloaderBuilder,
         };
@@ -367,7 +367,7 @@ mod tests {
         }
 
         impl<D: HeaderDownloader + 'static> StageTestRunner for HeadersTestRunner<D> {
-            type S = HeaderStage<ProviderFactory<Arc<TempDatabase<DatabaseEnv>>>, D>;
+            type S = HeaderStage<ProviderFactory<Arc<TempDatabase<DatabaseEnvironment>>>, D>;
 
             fn db(&self) -> &TestStageDB {
                 &self.db

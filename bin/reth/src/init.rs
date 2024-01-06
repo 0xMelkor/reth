@@ -225,8 +225,7 @@ mod tests {
     use reth_db::{
         models::{storage_sharded_key::StorageShardedKey, ShardedKey},
         table::{Table, TableRow},
-        test_utils::create_test_rw_db,
-        DatabaseEnv,
+        test_utils::create_test_rw_db, db_common::DatabaseEnvironment,
     };
     use reth_primitives::{
         Address, Chain, ForkTimestamps, Genesis, GenesisAccount, IntegerList, GOERLI,
@@ -325,7 +324,7 @@ mod tests {
         let tx = db.tx().expect("failed to init tx");
 
         assert_eq!(
-            collect_table_entries::<Arc<DatabaseEnv>, tables::AccountHistory>(&tx)
+            collect_table_entries::<Arc<DatabaseEnvironment>, tables::AccountHistory>(&tx)
                 .expect("failed to collect"),
             vec![
                 (ShardedKey::new(address_with_balance, u64::MAX), IntegerList::new([0]).unwrap()),
@@ -334,7 +333,7 @@ mod tests {
         );
 
         assert_eq!(
-            collect_table_entries::<Arc<DatabaseEnv>, tables::StorageHistory>(&tx)
+            collect_table_entries::<Arc<DatabaseEnvironment>, tables::StorageHistory>(&tx)
                 .expect("failed to collect"),
             vec![(
                 StorageShardedKey::new(address_with_storage, storage_key, u64::MAX),

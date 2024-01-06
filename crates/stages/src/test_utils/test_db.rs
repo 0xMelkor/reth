@@ -7,7 +7,7 @@ use reth_db::{
     tables,
     test_utils::{create_test_rw_db, create_test_rw_db_with_path, TempDatabase},
     transaction::{DbTx, DbTxMut},
-    DatabaseEnv, DatabaseError as DbError,
+    DatabaseError as DbError, db_common::DatabaseEnvironment,
 };
 use reth_interfaces::{provider::ProviderResult, test_utils::generators::ChangeSet};
 use reth_primitives::{
@@ -20,7 +20,7 @@ use std::{collections::BTreeMap, path::Path, sync::Arc};
 /// Test database that is used for testing stage implementations.
 #[derive(Debug)]
 pub struct TestStageDB {
-    pub factory: ProviderFactory<Arc<TempDatabase<DatabaseEnv>>>,
+    pub factory: ProviderFactory<Arc<TempDatabase<DatabaseEnvironment>>>,
 }
 
 impl Default for TestStageDB {
@@ -38,7 +38,7 @@ impl TestStageDB {
     /// Invoke a callback with transaction committing it afterwards
     pub fn commit<F>(&self, f: F) -> ProviderResult<()>
     where
-        F: FnOnce(&<DatabaseEnv as Database>::TXMut) -> ProviderResult<()>,
+        F: FnOnce(&<DatabaseEnvironment as Database>::TXMut) -> ProviderResult<()>,
     {
         let tx = self.factory.provider_rw()?;
         f(tx.tx_ref())?;
@@ -49,7 +49,7 @@ impl TestStageDB {
     /// Invoke a callback with a read transaction
     pub fn query<F, Ok>(&self, f: F) -> ProviderResult<Ok>
     where
-        F: FnOnce(&<DatabaseEnv as Database>::TX) -> ProviderResult<Ok>,
+        F: FnOnce(&<DatabaseEnvironment as Database>::TX) -> ProviderResult<Ok>,
     {
         f(self.factory.provider()?.tx_ref())
     }

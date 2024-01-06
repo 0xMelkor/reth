@@ -10,7 +10,7 @@ use crate::{
     utils::DbTool,
 };
 use clap::Parser;
-use reth_db::{database::Database, open_db, tables, transaction::DbTxMut, DatabaseEnv};
+use reth_db::{database::Database, open_db, tables, transaction::DbTxMut, db_common::DatabaseEnvironment};
 use reth_primitives::{fs, stage::StageId, ChainSpec};
 use std::sync::Arc;
 use tracing::info;
@@ -67,7 +67,7 @@ impl Command {
                     tx.clear::<tables::BlockOmmers>()?;
                     tx.clear::<tables::BlockWithdrawals>()?;
                     tx.put::<tables::SyncStage>(StageId::Bodies.to_string(), Default::default())?;
-                    insert_genesis_header::<DatabaseEnv>(tx, self.chain)?;
+                    insert_genesis_header::<DatabaseEnvironment>(tx, self.chain)?;
                 }
                 StageEnum::Senders => {
                     tx.clear::<tables::TxSenders>()?;
@@ -87,7 +87,7 @@ impl Command {
                         StageId::Execution.to_string(),
                         Default::default(),
                     )?;
-                    insert_genesis_state::<DatabaseEnv>(tx, self.chain.genesis())?;
+                    insert_genesis_state::<DatabaseEnvironment>(tx, self.chain.genesis())?;
                 }
                 StageEnum::AccountHashing => {
                     tx.clear::<tables::HashedAccount>()?;
@@ -152,7 +152,7 @@ impl Command {
                         StageId::TotalDifficulty.to_string(),
                         Default::default(),
                     )?;
-                    insert_genesis_header::<DatabaseEnv>(tx, self.chain)?;
+                    insert_genesis_header::<DatabaseEnvironment>(tx, self.chain)?;
                 }
                 StageEnum::TxLookup => {
                     tx.clear::<tables::TxHashNumber>()?;
@@ -160,7 +160,7 @@ impl Command {
                         StageId::TransactionLookup.to_string(),
                         Default::default(),
                     )?;
-                    insert_genesis_header::<DatabaseEnv>(tx, self.chain)?;
+                    insert_genesis_header::<DatabaseEnvironment>(tx, self.chain)?;
                 }
                 _ => {
                     info!("Nothing to do for stage {:?}", self.stage);

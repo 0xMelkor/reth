@@ -3,7 +3,7 @@ use criterion::{
     BenchmarkGroup, Criterion,
 };
 use pprof::criterion::{Output, PProfProfiler};
-use reth_db::{test_utils::TempDatabase, DatabaseEnv};
+use reth_db::{test_utils::TempDatabase, db_common::DatabaseEnvironment};
 use reth_interfaces::test_utils::TestConsensus;
 use reth_primitives::stage::StageCheckpoint;
 use reth_stages::{
@@ -121,7 +121,7 @@ fn measure_stage_with_path<F, S>(
     stage_range: StageRange,
     label: String,
 ) where
-    S: Clone + Stage<Arc<TempDatabase<DatabaseEnv>>>,
+    S: Clone + Stage<Arc<TempDatabase<DatabaseEnvironment>>>,
     F: Fn(S, &TestStageDB, StageRange),
 {
     let db = TestStageDB::new(&path);
@@ -154,7 +154,7 @@ fn measure_stage<F, S>(
     block_interval: std::ops::Range<u64>,
     label: String,
 ) where
-    S: Clone + Stage<Arc<TempDatabase<DatabaseEnv>>>,
+    S: Clone + Stage<Arc<TempDatabase<DatabaseEnvironment>>>,
     F: Fn(S, &TestStageDB, StageRange),
 {
     let path = setup::txs_testdata(block_interval.end);

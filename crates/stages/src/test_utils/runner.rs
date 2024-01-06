@@ -1,6 +1,6 @@
 use super::TestStageDB;
 use crate::{ExecInput, ExecOutput, Stage, StageError, StageExt, UnwindInput, UnwindOutput};
-use reth_db::{test_utils::TempDatabase, DatabaseEnv};
+use reth_db::{test_utils::TempDatabase, db_common::DatabaseEnvironment};
 use reth_interfaces::db::DatabaseError;
 use reth_provider::ProviderError;
 use std::sync::Arc;
@@ -18,7 +18,7 @@ pub(crate) enum TestRunnerError {
 
 /// A generic test runner for stages.
 pub(crate) trait StageTestRunner {
-    type S: Stage<Arc<TempDatabase<DatabaseEnv>>> + 'static;
+    type S: Stage<Arc<TempDatabase<DatabaseEnvironment>>> + 'static;
 
     /// Return a reference to the database.
     fn db(&self) -> &TestStageDB;

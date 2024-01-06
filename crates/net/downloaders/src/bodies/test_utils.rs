@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use reth_db::{database::Database, tables, transaction::DbTxMut, DatabaseEnv};
+use reth_db::{database::Database, tables, transaction::DbTxMut, db_common::DatabaseEnvironment};
 use reth_interfaces::{db, p2p::bodies::response::BlockResponse};
 use reth_primitives::{Block, BlockBody, SealedBlock, SealedHeader, B256};
 use std::collections::HashMap;
@@ -43,7 +43,7 @@ pub(crate) fn create_raw_bodies<'a>(
 }
 
 #[inline]
-pub(crate) fn insert_headers(db: &DatabaseEnv, headers: &[SealedHeader]) {
+pub(crate) fn insert_headers(db: &DatabaseEnvironment, headers: &[SealedHeader]) {
     db.update(|tx| -> Result<(), db::DatabaseError> {
         for header in headers {
             tx.put::<tables::CanonicalHeaders>(header.number, header.hash())?;

@@ -87,6 +87,10 @@ pub mod rocksdb {
     pub use crate::implementation::rocksdb::*;
 }
 
+pub mod db_common {
+    pub use crate::implementation::common::*;
+}
+
 pub use abstraction::*;
 use implementation::common::DatabaseEnvironment;
 pub use reth_interfaces::db::{DatabaseError, DatabaseWriteOperation};
@@ -259,7 +263,9 @@ pub mod test_utils {
     }
 
     /// Create read/write database for testing
-    pub fn create_test_rw_db_with_path<P: AsRef<Path>>(path: P) -> Arc<TempDatabase<DatabaseEnvironment>> {
+    pub fn create_test_rw_db_with_path<P: AsRef<Path>>(
+        path: P,
+    ) -> Arc<TempDatabase<DatabaseEnvironment>> {
         let path = path.as_ref().to_path_buf();
         let db = init_db(path.as_path(), None).expect(ERROR_DB_CREATION);
         Arc::new(TempDatabase { db: Some(db), path })

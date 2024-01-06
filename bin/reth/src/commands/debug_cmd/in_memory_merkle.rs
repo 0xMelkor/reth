@@ -13,7 +13,7 @@ use crate::{
 use backon::{ConstantBuilder, Retryable};
 use clap::Parser;
 use reth_config::Config;
-use reth_db::{init_db, DatabaseEnv};
+use reth_db::{init_db, db_common::DatabaseEnvironment};
 use reth_interfaces::executor::BlockValidationError;
 use reth_network::NetworkHandle;
 use reth_network_api::NetworkInfo;
@@ -80,7 +80,7 @@ impl Command {
         &self,
         config: &Config,
         task_executor: TaskExecutor,
-        db: Arc<DatabaseEnv>,
+        db: Arc<DatabaseEnvironment>,
         network_secret_path: PathBuf,
         default_peers_path: PathBuf,
     ) -> eyre::Result<NetworkHandle> {

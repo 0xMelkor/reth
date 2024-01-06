@@ -1,9 +1,9 @@
 use super::{mdbx, rocksdb};
-use crate::database::Database;
+use crate::{database::Database, database_metrics::{DatabaseMetrics, DatabaseMetadata}};
 use reth_interfaces::db::DatabaseError;
 
-mod cursor;
-mod tx;
+pub mod cursor;
+pub mod tx;
 
 /// TODO DOCS
 #[derive(Debug)]
@@ -29,6 +29,45 @@ impl Database for DatabaseEnvironment {
         match self {
             DatabaseEnvironment::MBDX(db) => db.tx_mut().map(tx::TxMut::MBDXTxMut),
             DatabaseEnvironment::RocksDB(db) => db.tx_mut().map(tx::TxMut::RocksDBTxMut),
+        }
+    }
+}
+
+impl DatabaseMetrics for DatabaseEnvironment {
+    fn report_metrics(&self) {
+        match self {
+            DatabaseEnvironment::MBDX(db) => db.report_metrics(),
+            DatabaseEnvironment::RocksDB(_) => todo!(),
+        }
+    }
+
+    fn gauge_metrics(&self) -> Vec<(&'static str, f64, Vec<metrics::Label>)> {
+        match self {
+            DatabaseEnvironment::MBDX(db) => db.gauge_metrics(),
+            DatabaseEnvironment::RocksDB(_) => todo!(),
+        }
+    }
+
+    fn counter_metrics(&self) -> Vec<(&'static str, u64, Vec<metrics::Label>)> {
+        match self {
+            DatabaseEnvironment::MBDX(db) => db.counter_metrics(),
+            DatabaseEnvironment::RocksDB(_) => todo!(),
+        }
+    }
+
+    fn histogram_metrics(&self) -> Vec<(&'static str, f64, Vec<metrics::Label>)> {
+        match self {
+            DatabaseEnvironment::MBDX(db) => db.histogram_metrics(),
+            DatabaseEnvironment::RocksDB(_) => todo!(),
+        }
+    }
+}
+
+impl DatabaseMetadata for DatabaseEnvironment {
+    fn metadata(&self) -> crate::database_metrics::DatabaseMetadataValue {
+        match self {
+            DatabaseEnvironment::MBDX(db) => db.metadata(),
+            DatabaseEnvironment::RocksDB(_) => todo!(),
         }
     }
 }

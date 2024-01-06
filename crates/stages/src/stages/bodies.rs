@@ -482,8 +482,7 @@ mod tests {
             models::{StoredBlockBodyIndices, StoredBlockOmmers},
             tables,
             test_utils::TempDatabase,
-            transaction::{DbTx, DbTxMut},
-            DatabaseEnv,
+            transaction::{DbTx, DbTxMut}, db_common::DatabaseEnvironment,
         };
         use reth_interfaces::{
             p2p::{
@@ -755,7 +754,7 @@ mod tests {
         /// A [BodyDownloader] that is backed by an internal [HashMap] for testing.
         #[derive(Debug)]
         pub(crate) struct TestBodyDownloader {
-            provider_factory: ProviderFactory<Arc<TempDatabase<DatabaseEnv>>>,
+            provider_factory: ProviderFactory<Arc<TempDatabase<DatabaseEnvironment>>>,
             responses: HashMap<B256, BlockBody>,
             headers: VecDeque<SealedHeader>,
             batch_size: u64,
@@ -763,7 +762,7 @@ mod tests {
 
         impl TestBodyDownloader {
             pub(crate) fn new(
-                provider_factory: ProviderFactory<Arc<TempDatabase<DatabaseEnv>>>,
+                provider_factory: ProviderFactory<Arc<TempDatabase<DatabaseEnvironment>>>,
                 responses: HashMap<B256, BlockBody>,
                 batch_size: u64,
             ) -> Self {

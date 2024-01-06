@@ -2,7 +2,7 @@ use super::tui::DbListTUI;
 use crate::utils::{DbTool, ListFilter};
 use clap::Parser;
 use eyre::WrapErr;
-use reth_db::{database::Database, table::Table, DatabaseEnv, RawValue, TableViewer, Tables};
+use reth_db::{database::Database, table::Table, RawValue, TableViewer, Tables, db_common::{DatabaseEnvironment, self}};
 use reth_primitives::hex;
 use std::cell::RefCell;
 use tracing::error;
@@ -50,7 +50,7 @@ pub struct Command {
 
 impl Command {
     /// Execute `db list` command
-    pub fn execute(self, tool: &DbTool<'_, DatabaseEnv>) -> eyre::Result<()> {
+    pub fn execute(self, tool: &DbTool<'_, DatabaseEnvironment>) -> eyre::Result<()> {
         self.table.view(&ListTableViewer { tool, args: &self })
     }
 
@@ -81,7 +81,7 @@ impl Command {
 }
 
 struct ListTableViewer<'a> {
-    tool: &'a DbTool<'a, DatabaseEnv>,
+    tool: &'a DbTool<'a, DatabaseEnvironment>,
     args: &'a Command,
 }
 
@@ -90,41 +90,49 @@ impl TableViewer<()> for ListTableViewer<'_> {
 
     fn view<T: Table>(&self) -> Result<(), Self::Error> {
         self.tool.db.view(|tx| {
-            let table_db = tx.inner.open_db(Some(self.args.table.name())).wrap_err("Could not open db.")?;
-            let stats = tx.inner.db_stat(&table_db).wrap_err(format!("Could not find table: {}", stringify!($table)))?;
-            let total_entries = stats.entries();
-            if self.args.skip > total_entries - 1 {
-                error!(
-                    target: "reth::cli",
-                    "Start index {start} is greater than the final entry index ({final_entry_idx}) in the table {table}",
-                    start = self.args.skip,
-                    final_entry_idx = total_entries - 1,
-                    table = self.args.table.name()
-                );
-                return Ok(())
-            }
-
-
-            let list_filter = self.args.list_filter();
-
-            if self.args.json || self.args.count {
-                let (list, count) = self.tool.list::<T>(&list_filter)?;
-
-                if self.args.count {
-                    println!("{count} entries found.")
-                } else if self.args.raw {
-                    let list = list.into_iter().map(|row| (row.0, RawValue::new(row.1).into_value())).collect::<Vec<_>>();
-                    println!("{}", serde_json::to_string_pretty(&list)?);
-                } else {
-                    println!("{}", serde_json::to_string_pretty(&list)?);
-                }
-                Ok(())
-            } else {
-                let list_filter = RefCell::new(list_filter);
-                DbListTUI::<_, T>::new(|skip, len| {
-                    list_filter.borrow_mut().update_page(skip, len);
-                    self.tool.list::<T>(&list_filter.borrow()).unwrap().0
-                }, self.args.skip, self.args.len, total_entries, self.args.raw).run()
+            match tx {
+                db_common::tx::Tx::MBDXTx(tx) => {
+                    let table_db = tx.inner.open_db(Some(self.args.table.name())).wrap_err("Could not open db.")?;
+                    let stats = tx.inner.db_stat(&table_db).wrap_err(format!("Could not find table: {}", stringify!($table)))?;
+                    let total_entries = stats.entries();
+                    if self.args.skip > total_entries - 1 {
+                        error!(
+                            target: "reth::cli",
+                            "Start index {start} is greater than the final entry index ({final_entry_idx}) in the table {table}",
+                            start = self.args.skip,
+                            final_entry_idx = total_entries - 1,
+                            table = self.args.table.name()
+                        );
+                        return Ok(())
+                    }
+        
+        
+                    let list_filter = self.args.list_filter();
+        
+                    if self.args.json || self.args.count {
+                        let (list, count) = self.tool.list::<T>(&list_filter)?;
+        
+                        if self.args.count {
+                            println!("{count} entries found.")
+                        } else if self.args.raw {
+                            let list = list.into_iter().map(|row| (row.0, RawValue::new(row.1).into_value())).collect::<Vec<_>>();
+                            println!("{}", serde_json::to_string_pretty(&list)?);
+                        } else {
+                            println!("{}", serde_json::to_string_pretty(&list)?);
+                        }
+                        Ok(())
+                    } else {
+                        let list_filter = RefCell::new(list_filter);
+                        DbListTUI::<_, T>::new(|skip, len| {
+                            list_filter.borrow_mut().update_page(skip, len);
+                            self.tool.list::<T>(&list_filter.borrow()).unwrap().0
+                        }, self.args.skip, self.args.len, total_entries, self.args.raw).run()
+                    }
+                },
+                db_common::tx::Tx::RocksDBTx(_) => {
+                    // TODO: Implement for rocksdb
+                    todo!()
+                },
             }
         })??;
 

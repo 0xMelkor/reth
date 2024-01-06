@@ -506,8 +506,7 @@ mod tests {
         cursor::{DbCursorRO, DbCursorRW, DbDupCursorRO},
         tables,
         test_utils::TempDatabase,
-        transaction::DbTxMut,
-        DatabaseEnv,
+        transaction::DbTxMut, db_common::DatabaseEnvironment,
     };
     use reth_primitives::{
         hex_literal::hex,
@@ -1254,7 +1253,7 @@ mod tests {
     }
 
     fn extension_node_storage_trie(
-        tx: &DatabaseProviderRW<Arc<TempDatabase<DatabaseEnv>>>,
+        tx: &DatabaseProviderRW<Arc<TempDatabase<DatabaseEnvironment>>>,
         hashed_address: B256,
     ) -> (B256, HashMap<Nibbles, BranchNodeCompact>) {
         let value = U256::from(1);
@@ -1282,7 +1281,7 @@ mod tests {
         (root, updates)
     }
 
-    fn extension_node_trie(tx: &DatabaseProviderRW<Arc<TempDatabase<DatabaseEnv>>>) -> B256 {
+    fn extension_node_trie(tx: &DatabaseProviderRW<Arc<TempDatabase<DatabaseEnvironment>>>) -> B256 {
         let a =
             Account { nonce: 0, balance: U256::from(1u64), bytecode_hash: Some(B256::random()) };
         let val = encode_account(a, None);

@@ -9,7 +9,7 @@ use crate::{
     PruneCheckpointReader, StageCheckpointReader, StateProviderBox, TransactionVariant,
     TransactionsProvider, WithdrawalsProvider,
 };
-use reth_db::{database::Database, init_db, models::StoredBlockBodyIndices, DatabaseEnv};
+use reth_db::{database::Database, init_db, models::StoredBlockBodyIndices, db_common::DatabaseEnvironment};
 use reth_interfaces::{db::LogLevel, provider::ProviderResult, RethError, RethResult};
 use reth_primitives::{
     snapshot::HighestSnapshots,
@@ -70,8 +70,8 @@ impl<DB> ProviderFactory<DB> {
         path: P,
         chain_spec: Arc<ChainSpec>,
         log_level: Option<LogLevel>,
-    ) -> RethResult<ProviderFactory<DatabaseEnv>> {
-        Ok(ProviderFactory::<DatabaseEnv> {
+    ) -> RethResult<ProviderFactory<DatabaseEnvironment>> {
+        Ok(ProviderFactory::<DatabaseEnvironment> {
             db: init_db(path, log_level).map_err(|e| RethError::Custom(e.to_string()))?,
             chain_spec,
             snapshot_provider: None,
@@ -506,7 +506,7 @@ mod tests {
     use alloy_rlp::Decodable;
     use assert_matches::assert_matches;
     use rand::Rng;
-    use reth_db::{tables, test_utils::ERROR_TEMPDIR, transaction::DbTxMut, DatabaseEnv};
+    use reth_db::{tables, test_utils::ERROR_TEMPDIR, transaction::DbTxMut, db_common::DatabaseEnvironment};
     use reth_interfaces::{
         provider::ProviderError,
         test_utils::{
@@ -550,7 +550,7 @@ mod tests {
     #[test]
     fn provider_factory_with_database_path() {
         let chain_spec = ChainSpecBuilder::mainnet().build();
-        let factory = ProviderFactory::<DatabaseEnv>::new_with_database_path(
+        let factory = ProviderFactory::<DatabaseEnvironment>::new_with_database_path(
             tempfile::TempDir::new().expect(ERROR_TEMPDIR).into_path(),
             Arc::new(chain_spec),
             None,

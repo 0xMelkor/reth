@@ -2,7 +2,7 @@ use clap::{builder::RangedU64ValueParser, Parser};
 use human_bytes::human_bytes;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_db::{database::Database, open_db_read_only, DatabaseEnv};
+use reth_db::{database::Database, open_db_read_only, db_common::DatabaseEnvironment};
 use reth_interfaces::db::LogLevel;
 use reth_nippy_jar::{NippyJar, NippyJarCursor};
 use reth_primitives::{
@@ -101,15 +101,15 @@ impl Command {
                     };
 
                     match mode {
-                        SnapshotSegment::Headers => self.generate_snapshot::<DatabaseEnv>(
+                        SnapshotSegment::Headers => self.generate_snapshot::<DatabaseEnvironment>(
                             factory.clone(),
                             snap_segments::Headers::new(*compression, filters),
                         )?,
-                        SnapshotSegment::Transactions => self.generate_snapshot::<DatabaseEnv>(
+                        SnapshotSegment::Transactions => self.generate_snapshot::<DatabaseEnvironment>(
                             factory.clone(),
                             snap_segments::Transactions::new(*compression, filters),
                         )?,
-                        SnapshotSegment::Receipts => self.generate_snapshot::<DatabaseEnv>(
+                        SnapshotSegment::Receipts => self.generate_snapshot::<DatabaseEnvironment>(
                             factory.clone(),
                             snap_segments::Receipts::new(*compression, filters),
                         )?,

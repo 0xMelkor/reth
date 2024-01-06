@@ -48,11 +48,10 @@ mod tests {
     use alloy_rlp::Decodable;
     use reth_db::{
         cursor::DbCursorRO,
-        mdbx::{cursor::Cursor, RW},
+        db_common::DatabaseEnvironment,
         tables,
         test_utils::TempDatabase,
         transaction::{DbTx, DbTxMut},
-        AccountHistory, DatabaseEnv,
     };
     use reth_interfaces::test_utils::generators::{self, random_block};
     use reth_primitives::{
@@ -118,7 +117,7 @@ mod tests {
             .unwrap();
         provider_rw.commit().unwrap();
 
-        let check_pruning = |factory: ProviderFactory<Arc<TempDatabase<DatabaseEnv>>>,
+        let check_pruning = |factory: ProviderFactory<Arc<TempDatabase<DatabaseEnvironment>>>,
                              prune_modes: PruneModes,
                              expect_num_receipts: usize,
                              expect_num_acc_changesets: usize,
@@ -167,7 +166,7 @@ mod tests {
                 assert!(acc_indexing_stage.execute(&provider, input).is_err());
             } else {
                 acc_indexing_stage.execute(&provider, input).unwrap();
-                let mut account_history: Cursor<RW, AccountHistory> =
+                let mut account_history =
                     provider.tx_ref().cursor_read::<tables::AccountHistory>().unwrap();
                 assert_eq!(account_history.walk(None).unwrap().count(), expect_num_acc_changesets);
             }

@@ -3,8 +3,7 @@
 use crate::dirs::{ChainPath, DataDirPath, MaybePlatformPath};
 use reth_db::{
     init_db,
-    test_utils::{create_test_rw_db, TempDatabase},
-    DatabaseEnv,
+    test_utils::{create_test_rw_db, TempDatabase}, db_common::DatabaseEnvironment,
 };
 use reth_interfaces::db::LogLevel;
 use reth_primitives::Chain;
@@ -75,14 +74,14 @@ pub enum DatabaseInstance {
     /// The test database
     Test {
         /// The database
-        db: Arc<TempDatabase<DatabaseEnv>>,
+        db: Arc<TempDatabase<DatabaseEnvironment>>,
         /// The data dir
         data_dir: ChainPath<DataDirPath>,
     },
     /// The real database
     Real {
         /// The database
-        db: Arc<DatabaseEnv>,
+        db: Arc<DatabaseEnvironment>,
         /// The data dir
         data_dir: ChainPath<DataDirPath>,
     },

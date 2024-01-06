@@ -1,7 +1,7 @@
 use super::setup;
 use crate::utils::DbTool;
 use eyre::Result;
-use reth_db::{database::Database, table::TableImporter, tables, DatabaseEnv};
+use reth_db::{database::Database, table::TableImporter, tables, db_common::DatabaseEnvironment};
 use reth_primitives::{stage::StageCheckpoint, BlockNumber, ChainSpec, PruneModes};
 use reth_provider::ProviderFactory;
 use reth_stages::{
@@ -45,7 +45,7 @@ async fn unwind_and_copy<DB: Database>(
     db_tool: &DbTool<'_, DB>,
     range: (u64, u64),
     tip_block_number: u64,
-    output_db: &DatabaseEnv,
+    output_db: &DatabaseEnvironment,
 ) -> eyre::Result<()> {
     let (from, to) = range;
     let factory = ProviderFactory::new(db_tool.db, db_tool.chain.clone());

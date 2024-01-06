@@ -8,7 +8,7 @@ use proptest::{
     strategy::{Strategy, ValueTree},
     test_runner::TestRunner,
 };
-use reth_db::{cursor::DbCursorRW, TxHashNumber};
+use reth_db::{cursor::DbCursorRW, TxHashNumber, db_common};
 use std::collections::HashSet;
 
 criterion_group! {
@@ -156,7 +156,7 @@ where
     (preload, input)
 }
 
-fn append<T>(db: DatabaseEnv, input: Vec<(<T as Table>::Key, <T as Table>::Value)>) -> DatabaseEnv
+fn append<T>(db: DatabaseEnvironment, input: Vec<(<T as Table>::Key, <T as Table>::Value)>) -> DatabaseEnvironment
 where
     T: Table + Default,
 {
@@ -168,13 +168,13 @@ where
                 crsr.append(k, v).expect("submit");
             }
 
-            tx.inner.commit().unwrap()
+            tx.commit().unwrap()
         });
     }
     db
 }
 
-fn insert<T>(db: DatabaseEnv, input: Vec<(<T as Table>::Key, <T as Table>::Value)>) -> DatabaseEnv
+fn insert<T>(db: DatabaseEnvironment, input: Vec<(<T as Table>::Key, <T as Table>::Value)>) -> DatabaseEnvironment
 where
     T: Table + Default,
 {
@@ -186,13 +186,13 @@ where
                 crsr.insert(k, v).expect("submit");
             }
 
-            tx.inner.commit().unwrap()
+            tx.commit().unwrap()
         });
     }
     db
 }
 
-fn put<T>(db: DatabaseEnv, input: Vec<(<T as Table>::Key, <T as Table>::Value)>) -> DatabaseEnv
+fn put<T>(db: DatabaseEnvironment, input: Vec<(<T as Table>::Key, <T as Table>::Value)>) -> DatabaseEnvironment
 where
     T: Table + Default,
 {
@@ -203,7 +203,7 @@ where
                 tx.put::<T>(k, v).expect("submit");
             }
 
-            tx.inner.commit().unwrap()
+            tx.commit().unwrap()
         });
     }
     db
@@ -220,34 +220,43 @@ struct TableStats {
     size: usize,
 }
 
-fn get_table_stats<T>(db: DatabaseEnv)
+fn get_table_stats<T>(db: DatabaseEnvironment)
 where
     T: Table + Default,
 {
     db.view(|tx| {
-        let table_db = tx.inner.open_db(Some(T::NAME)).map_err(|_| "Could not open db.").unwrap();
+        
+        match tx {
+            db_common::tx::Tx::MBDXTx(tx) => {
+                let table_db = tx.inner.open_db(Some(T::NAME)).map_err(|_| "Could not open db.").unwrap();
 
-        println!(
-            "{:?}\n",
-            tx.inner
-                .db_stat(&table_db)
-                .map_err(|_| format!("Could not find table: {}", T::NAME))
-                .map(|stats| {
-                    let num_pages =
-                        stats.leaf_pages() + stats.branch_pages() + stats.overflow_pages();
-                    let size = num_pages * stats.page_size() as usize;
-
-                    TableStats {
-                        page_size: stats.page_size() as usize,
-                        leaf_pages: stats.leaf_pages(),
-                        branch_pages: stats.branch_pages(),
-                        overflow_pages: stats.overflow_pages(),
-                        num_pages,
-                        size,
-                    }
-                })
-                .unwrap()
-        );
+                println!(
+                    "{:?}\n",
+                    tx.inner
+                        .db_stat(&table_db)
+                        .map_err(|_| format!("Could not find table: {}", T::NAME))
+                        .map(|stats| {
+                            let num_pages =
+                                stats.leaf_pages() + stats.branch_pages() + stats.overflow_pages();
+                            let size = num_pages * stats.page_size() as usize;
+        
+                            TableStats {
+                                page_size: stats.page_size() as usize,
+                                leaf_pages: stats.leaf_pages(),
+                                branch_pages: stats.branch_pages(),
+                                overflow_pages: stats.overflow_pages(),
+                                num_pages,
+                                size,
+                            }
+                        })
+                        .unwrap()
+                );
+            },
+            db_common::tx::Tx::RocksDBTx(_) => {
+                // TODO: Implement stats for RocksDB database
+                todo!()
+            },
+        }
     })
     .unwrap();
 }

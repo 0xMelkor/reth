@@ -7,7 +7,7 @@ use crate::{
 use clap::Parser;
 use reth_db::{
     cursor::DbCursorRO, database::Database, init_db, table::TableImporter, tables,
-    transaction::DbTx, DatabaseEnv,
+    transaction::DbTx, db_common::DatabaseEnvironment,
 };
 use reth_primitives::ChainSpec;
 use std::{path::PathBuf, sync::Arc};
@@ -131,7 +131,7 @@ pub(crate) fn setup<DB: Database>(
     to: u64,
     output_db: &PathBuf,
     db_tool: &DbTool<'_, DB>,
-) -> eyre::Result<(DatabaseEnv, u64)> {
+) -> eyre::Result<(DatabaseEnvironment, u64)> {
     assert!(from < to, "FROM block should be bigger than TO block.");
 
     info!(target: "reth::cli", ?output_db, "Creating separate db");
