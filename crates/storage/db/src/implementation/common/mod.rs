@@ -2,8 +2,19 @@ use super::{mdbx, rocksdb};
 use crate::{database::Database, database_metrics::{DatabaseMetrics, DatabaseMetadata}};
 use reth_interfaces::db::DatabaseError;
 
+/// TODO: DOCS
 pub mod cursor;
+/// TODO: DOCS
 pub mod tx;
+
+/// Environment used when opening the database RO/RW.
+#[derive(Debug)]
+pub enum DbAccessMode {
+    /// Read-only database access.
+    RO,
+    /// Read-write database access.
+    RW,
+}
 
 /// TODO DOCS
 #[derive(Debug)]

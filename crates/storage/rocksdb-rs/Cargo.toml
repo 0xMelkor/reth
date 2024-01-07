@@ -1,0 +1,34 @@
+[package]
+name = "reth-rocksdb"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Idiomatic and safe rocksdb wrapper"
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+name = "reth_rocksdb"
+
+[dependencies]
+thiserror.workspace = true
+rocksdb = {version = "0.21.0", features = ["multi-threaded-cf"]}
+reth-interfaces.workspace = true
+
+# TODO: Benches
+
+# [dev-dependencies]
+# pprof = { workspace = true, features = ["flamegraph", "frame-pointer", "criterion"] }
+# criterion.workspace = true
+# rand.workspace = true
+# rand_xorshift = "0.3"
+# tempfile.workspace = true
+
+# [[bench]]
+# name = "cursor"
+# harness = false
+
+# [[bench]]
+# name = "transaction"
+# harness = false

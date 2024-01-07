@@ -16,6 +16,7 @@ reth-codecs.workspace = true
 reth-libmdbx = { workspace = true, optional = true, features = ["return-borrowed"] }
 reth-nippy-jar.workspace = true
 reth-tracing.workspace = true
+reth-rocksdb.workspace = true
 
 # codecs
 serde = { workspace = true, default-features = false }

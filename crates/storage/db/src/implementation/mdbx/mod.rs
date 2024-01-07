@@ -17,6 +17,8 @@ use reth_tracing::tracing::error;
 use std::{ops::Deref, path::Path};
 use tx::Tx;
 
+use super::common::DbAccessMode;
+
 pub mod cursor;
 pub mod tx;
 
@@ -25,15 +27,6 @@ const TERABYTE: usize = GIGABYTE * 1024;
 
 /// MDBX allows up to 32767 readers (`MDBX_READERS_LIMIT`), but we limit it to slightly below that
 const DEFAULT_MAX_READERS: u64 = 32_000;
-
-/// Environment used when opening a MDBX environment. RO/RW.
-#[derive(Debug)]
-pub enum DatabaseEnvKind {
-    /// Read-only MDBX environment.
-    RO,
-    /// Read-write MDBX environment.
-    RW,
-}
 
 /// Wrapper for the libmdbx environment: [Environment]
 #[derive(Debug)]
@@ -144,14 +137,14 @@ impl DatabaseEnv {
     /// It does not create the tables, for that call [`DatabaseEnv::create_tables`].
     pub fn open(
         path: &Path,
-        kind: DatabaseEnvKind,
+        kind: DbAccessMode,
         log_level: Option<LogLevel>,
     ) -> Result<DatabaseEnv, DatabaseError> {
         let mut inner_env = Environment::builder();
 
         let mode = match kind {
-            DatabaseEnvKind::RO => Mode::ReadOnly,
-            DatabaseEnvKind::RW => {
+            DbAccessMode::RO => Mode::ReadOnly,
+            DbAccessMode::RW => {
                 // enable writemap mode in RW mode
                 inner_env.write_map();
                 Mode::ReadWrite { sync_mode: SyncMode::Durable }
@@ -292,7 +285,7 @@ mod tests {
     use tempfile::TempDir;
 
     /// Create database for testing
-    fn create_test_db(kind: DatabaseEnvKind) -> Arc<DatabaseEnv> {
+    fn create_test_db(kind: DbAccessMode) -> Arc<DatabaseEnv> {
         Arc::new(create_test_db_with_path(
             kind,
             &tempfile::TempDir::new().expect(ERROR_TEMPDIR).into_path(),
@@ -300,7 +293,7 @@ mod tests {
     }
 
     /// Create database for testing with specified path
-    fn create_test_db_with_path(kind: DatabaseEnvKind, path: &Path) -> DatabaseEnv {
+    fn create_test_db_with_path(kind: DbAccessMode, path: &Path) -> DatabaseEnv {
         let env = DatabaseEnv::open(path, kind, None).expect(ERROR_DB_CREATION);
         env.create_tables().expect(ERROR_TABLE_CREATION);
         env
@@ -318,12 +311,12 @@ mod tests {
 
     #[test]
     fn db_creation() {
-        create_test_db(DatabaseEnvKind::RW);
+        create_test_db(DbAccessMode::RW);
     }
 
     #[test]
     fn db_manual_put_get() {
-        let env = create_test_db(DatabaseEnvKind::RW);
+        let env = create_test_db(DbAccessMode::RW);
 
         let value = Header::default();
         let key = 1u64;
@@ -342,7 +335,7 @@ mod tests {
 
     #[test]
     fn db_cursor_walk() {
-        let env = create_test_db(DatabaseEnvKind::RW);
+        let env = create_test_db(DbAccessMode::RW);
 
         let value = Header::default();
         let key = 1u64;
@@ -367,7 +360,7 @@ mod tests {
 
     #[test]
     fn db_cursor_walk_range() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT (0, 0), (1, 0), (2, 0), (3, 0)
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -431,7 +424,7 @@ mod tests {
 
     #[test]
     fn db_cursor_walk_range_on_dup_table() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         let address0 = Address::ZERO;
         let address1 = Address::with_last_byte(1);
@@ -473,7 +466,7 @@ mod tests {
     #[allow(clippy::reversed_empty_ranges)]
     #[test]
     fn db_cursor_walk_range_invalid() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT (0, 0), (1, 0), (2, 0), (3, 0)
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -501,7 +494,7 @@ mod tests {
 
     #[test]
     fn db_walker() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT (0, 0), (1, 0), (3, 0)
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -531,7 +524,7 @@ mod tests {
 
     #[test]
     fn db_reverse_walker() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT (0, 0), (1, 0), (3, 0)
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -561,7 +554,7 @@ mod tests {
 
     #[test]
     fn db_walk_back() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT (0, 0), (1, 0), (3, 0)
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -600,7 +593,7 @@ mod tests {
 
     #[test]
     fn db_cursor_seek_exact_or_previous_key() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -626,7 +619,7 @@ mod tests {
 
     #[test]
     fn db_cursor_insert() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -669,7 +662,7 @@ mod tests {
 
     #[test]
     fn db_cursor_insert_dup() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
 
         let mut dup_cursor = tx.cursor_dup_write::<PlainStorageState>().unwrap();
@@ -687,7 +680,7 @@ mod tests {
 
     #[test]
     fn db_cursor_delete_current_non_existent() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
 
         let key1 = Address::with_last_byte(1);
@@ -715,7 +708,7 @@ mod tests {
 
     #[test]
     fn db_cursor_insert_wherever_cursor_is() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
 
         // PUT
@@ -748,7 +741,7 @@ mod tests {
 
     #[test]
     fn db_cursor_append() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -775,7 +768,7 @@ mod tests {
 
     #[test]
     fn db_cursor_append_failure() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         // PUT
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
@@ -812,7 +805,7 @@ mod tests {
 
     #[test]
     fn db_cursor_upsert() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
         let tx = db.tx_mut().expect(ERROR_INIT_TX);
 
         let mut cursor = tx.cursor_write::<PlainAccountState>().unwrap();
@@ -847,7 +840,7 @@ mod tests {
 
     #[test]
     fn db_cursor_dupsort_append() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
 
         let transition_id = 2;
 
@@ -916,7 +909,7 @@ mod tests {
             .expect(ERROR_ETH_ADDRESS);
 
         {
-            let env = create_test_db_with_path(DatabaseEnvKind::RW, &path);
+            let env = create_test_db_with_path(DbAccessMode::RW, &path);
 
             // PUT
             let result = env.update(|tx| {
@@ -926,7 +919,7 @@ mod tests {
             assert_eq!(result.expect(ERROR_RETURN_VALUE), 200);
         }
 
-        let env = DatabaseEnv::open(&path, DatabaseEnvKind::RO, None).expect(ERROR_DB_CREATION);
+        let env = DatabaseEnv::open(&path, DbAccessMode::RO, None).expect(ERROR_DB_CREATION);
 
         // GET
         let result =
@@ -937,7 +930,7 @@ mod tests {
 
     #[test]
     fn db_dup_sort() {
-        let env = create_test_db(DatabaseEnvKind::RW);
+        let env = create_test_db(DbAccessMode::RW);
         let key = Address::from_str("0xa2c122be93b0074270ebee7f6b7292c7deb45047")
             .expect(ERROR_ETH_ADDRESS);
 
@@ -981,7 +974,7 @@ mod tests {
 
     #[test]
     fn db_iterate_over_all_dup_values() {
-        let env = create_test_db(DatabaseEnvKind::RW);
+        let env = create_test_db(DbAccessMode::RW);
         let key1 = Address::from_str("0x1111111111111111111111111111111111111111")
             .expect(ERROR_ETH_ADDRESS);
         let key2 = Address::from_str("0x2222222222222222222222222222222222222222")
@@ -1027,7 +1020,7 @@ mod tests {
 
     #[test]
     fn dup_value_with_same_subkey() {
-        let env = create_test_db(DatabaseEnvKind::RW);
+        let env = create_test_db(DbAccessMode::RW);
         let key1 = Address::new([0x11; 20]);
         let key2 = Address::new([0x22; 20]);
 
@@ -1070,7 +1063,7 @@ mod tests {
 
     #[test]
     fn db_sharded_key() {
-        let db: Arc<DatabaseEnv> = create_test_db(DatabaseEnvKind::RW);
+        let db: Arc<DatabaseEnv> = create_test_db(DbAccessMode::RW);
         let real_key = Address::from_str("0xa2c122be93b0074270ebee7f6b7292c7deb45047").unwrap();
 
         for i in 1..5 {
