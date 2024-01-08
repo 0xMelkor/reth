@@ -1,12 +1,11 @@
 mod environment;
 mod error;
-mod transaction;
 mod flags;
-
+mod transaction;
 
 pub use crate::{
     environment::{Environment, EnvironmentBuilder},
     error::{Error, Result},
     flags::Mode,
-    transaction::Transaction
+    transaction::Transaction,
 };

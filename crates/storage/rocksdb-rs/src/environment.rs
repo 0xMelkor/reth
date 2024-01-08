@@ -1,19 +1,22 @@
 use crate::{
     error::{Error, Result},
-    flags::Mode,
+    flags::{DatabaseFlags, Mode},
+    Transaction,
 };
+use core::fmt;
 use reth_interfaces::db::LogLevel;
-use rocksdb::{TransactionDB, DB};
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use rocksdb::{TransactionDB, TransactionDBOptions, Options};
+use std::{path::Path, sync::Arc};
 
-#[derive(Debug)]
 pub struct Environment {
-    inner: Arc<rocksdb::DB>,
-    path: Box<PathBuf>,
+    inner: Arc<rocksdb::TransactionDB>,
     access_mode: Mode,
+}
+
+impl fmt::Debug for Environment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Environment({:?})", self.access_mode)
+    }
 }
 
 impl Environment {
@@ -21,18 +24,46 @@ impl Environment {
         EnvironmentBuilder { log_level: None, access_mode: Mode::ReadOnly }
     }
 
+    /// TODO: DOCS
+    pub fn create_db<S: AsRef<str>>(&self, name: S) -> Result<()> {
+        let mut opts = Options::default();
+        opts.create_missing_column_families(true);
+        // TODO: Tune at convenience
+        // opts.create_if_missing(true);
+        // opts.set_max_open_files(10000);
+        // opts.set_use_fsync(false);
+        // opts.set_bytes_per_sync(8388608);
+        // opts.optimize_for_point_lookup(1024);
+        // opts.set_table_cache_num_shard_bits(6);
+        // opts.set_max_write_buffer_number(32);
+        // opts.set_write_buffer_size(536870912);
+        // opts.set_target_file_size_base(1073741824);
+        // opts.set_min_write_buffer_number_to_merge(4);
+        // opts.set_level_zero_stop_writes_trigger(2000);
+        // opts.set_level_zero_slowdown_writes_trigger(0);
+        // opts.set_compaction_style(DBCompactionStyle::Universal);
+        // opts.set_disable_auto_compactions(true);
+        self.inner.create_cf(name, &opts)?;
+        Ok(())
+    }
+
     /// Create a read-only transaction for use with the environment.
     #[inline]
-    pub fn begin_ro_txn(&self) -> Result<()> {
-        todo!()
+    pub fn begin_ro_txn(&self) -> Result<Transaction> {
+        let snap = self.inner.snapshot();
+        let tx = Transaction::ro(snap);
+        Ok(tx)
     }
 
     /// Create a read-write transaction for use with the environment.
-    pub fn begin_rw_txn(&self) -> Result<()> {
+    pub fn begin_rw_txn(&self) -> Result<Transaction> {
         if self.is_read_only() {
             return Err(Error::ReadOnly);
+        } else {
+            let inner_tx = self.inner.transaction();
+            let tx = Transaction::rw(inner_tx);
+            Ok(tx)
         }
-        todo!()
     }
 
     /// Returns true if the environment was opened in [Mode::ReadWrite] mode.
@@ -54,35 +85,29 @@ pub struct EnvironmentBuilder {
 }
 impl EnvironmentBuilder {
     pub fn open(self, path: &Path) -> Result<Environment> {
-        // Detect mode RO/RW
-        // Set geometry options
-        // - size
-        // - shrink
-        // - grow step
-        // - page size
+        self.open_with_flags(path, DatabaseFlags::Open)
+    }
 
-        // Set flags
-        // - disable readahead: we must favour random access vs linear scan
-        // - set max readers
+    pub fn open_create(self, path: &Path) -> Result<Environment> {
+        self.open_with_flags(path, DatabaseFlags::Create)
+    }
 
-        // Set log level
-
+    fn open_with_flags(self, path: &Path, flags: DatabaseFlags) -> Result<Environment> {
         let mut opts = rocksdb::Options::default();
-        opts.create_if_missing(false);
+
+        if let DatabaseFlags::Create = flags {
+            opts.create_if_missing(true);
+            opts.create_missing_column_families(true)
+        }
+
         if let Some(level) = self.log_level {
             opts.set_log_level(level);
         }
 
-        let db = match self.access_mode {
-            Mode::ReadOnly => DB::open_for_read_only(&opts, path, false)?,
-            Mode::ReadWrite => DB::open(&opts, path)?,
-        };
+        let txn_db_opts = TransactionDBOptions::default();
+        let db = TransactionDB::open(&opts, &txn_db_opts, path)?;
 
-        Ok(Environment {
-            inner: Arc::new(db),
-            path: Box::new(path.to_owned()),
-            access_mode: self.access_mode,
-        })
+        Ok(Environment { inner: Arc::new(db), access_mode: self.access_mode })
     }
 
     pub fn set_log_level(&mut self, level: LogLevel) -> &mut Self {

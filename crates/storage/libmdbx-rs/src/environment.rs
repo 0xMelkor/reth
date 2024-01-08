@@ -103,6 +103,7 @@ impl Environment {
         let sender = self.ensure_txn_manager()?;
         let txn = loop {
             let (tx, rx) = sync_channel(0);
+            
             sender
                 .send(TxnManagerMessage::Begin {
                     parent: TxnPtr(ptr::null_mut()),

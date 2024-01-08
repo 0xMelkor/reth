@@ -1,20 +1,27 @@
-use std::collections::BTreeMap;
-
 use reth_interfaces::db::DatabaseError;
+use reth_rocksdb::Transaction;
 
-use crate::{transaction::{DbTx, DbTxMut}, table::{Table, DupSort, TableImporter}};
+use crate::{
+    table::{DupSort, Table, TableImporter},
+    transaction::{DbTx, DbTxMut},
+};
 
 use super::cursor::Cursor;
 
 #[derive(Debug)]
-pub struct Tx {
-    /// Table representation
-    _table: BTreeMap<Vec<u8>, Vec<u8>>,
+pub struct Tx<'a> {
+    pub inner: Transaction<'a>,
 }
 
-impl TableImporter for Tx {}
+impl<'a> TableImporter for Tx<'a> {}
 
-impl DbTx for Tx {
+impl<'a> Tx<'a> {
+    pub fn new(inner: Transaction<'a>) -> Self {
+        Self { inner }
+    }
+}
+
+impl<'a> DbTx for Tx<'a> {
     type Cursor<T: Table> = Cursor<T>;
     type DupCursor<T: DupSort> = Cursor<T>;
 
@@ -37,11 +44,11 @@ impl DbTx for Tx {
     }
 
     fn entries<T: Table>(&self) -> Result<usize, DatabaseError> {
-        Ok(self._table.len())
+        todo!()
     }
 }
 
-impl DbTxMut for Tx {
+impl<'a> DbTxMut for Tx<'a> {
     type CursorMut<T: Table> = Cursor<T>;
     type DupCursorMut<T: DupSort> = Cursor<T>;
 
