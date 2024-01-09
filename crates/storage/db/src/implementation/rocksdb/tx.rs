@@ -2,31 +2,34 @@ use reth_interfaces::db::DatabaseError;
 use reth_rocksdb::Transaction;
 
 use crate::{
-    table::{DupSort, Table, TableImporter},
+    table::{DupSort, Table, TableImporter, Encode, Decompress},
     transaction::{DbTx, DbTxMut},
 };
 
 use super::cursor::Cursor;
 
 #[derive(Debug)]
-pub struct Tx<'a> {
-    pub inner: Transaction<'a>,
+pub struct Tx {
+    pub inner: Transaction,
 }
 
-impl<'a> TableImporter for Tx<'a> {}
+impl TableImporter for Tx {}
 
-impl<'a> Tx<'a> {
-    pub fn new(inner: Transaction<'a>) -> Self {
+impl Tx {
+    pub fn new(inner: Transaction) -> Self {
         Self { inner }
     }
 }
 
-impl<'a> DbTx for Tx<'a> {
+impl DbTx for Tx {
     type Cursor<T: Table> = Cursor<T>;
     type DupCursor<T: DupSort> = Cursor<T>;
 
-    fn get<T: Table>(&self, _key: T::Key) -> Result<Option<T::Value>, DatabaseError> {
-        Ok(None)
+    fn get<T: Table>(&self, key: T::Key) -> Result<Option<T::Value>, DatabaseError> {
+        let key = key.encode().as_ref().to_vec();
+        let res = self.inner.get(key)?;
+        let value = res.map(|bytes| Decompress::decompress_owned(bytes)).transpose();
+        value
     }
 
     fn commit(self) -> Result<bool, DatabaseError> {
@@ -48,7 +51,7 @@ impl<'a> DbTx for Tx<'a> {
     }
 }
 
-impl<'a> DbTxMut for Tx<'a> {
+impl DbTxMut for Tx {
     type CursorMut<T: Table> = Cursor<T>;
     type DupCursorMut<T: DupSort> = Cursor<T>;
 

@@ -23,8 +23,8 @@ pub struct DatabaseEnv {
 }
 
 impl Database for DatabaseEnv {
-    type TX = tx::Tx<'static>;
-    type TXMut = tx::Tx<'static>;
+    type TX = tx::Tx;
+    type TXMut = tx::Tx;
 
     fn tx(&self) -> Result<Self::TX, reth_interfaces::db::DatabaseError> {
         let inner = self.inner.begin_ro_txn().map_err(|e| DatabaseError::InitTx(-12))?;

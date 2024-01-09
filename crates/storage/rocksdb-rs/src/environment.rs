@@ -50,8 +50,8 @@ impl Environment {
     /// Create a read-only transaction for use with the environment.
     #[inline]
     pub fn begin_ro_txn(&self) -> Result<Transaction> {
-        let snap = self.inner.snapshot();
-        let tx = Transaction::ro(snap);
+        let db = self.inner.clone();
+        let tx = Transaction::ro(db);
         Ok(tx)
     }
 
@@ -60,8 +60,8 @@ impl Environment {
         if self.is_read_only() {
             return Err(Error::ReadOnly);
         } else {
-            let inner_tx = self.inner.transaction();
-            let tx = Transaction::rw(inner_tx);
+            let db = self.inner.clone();
+            let tx = Transaction::rw(db);
             Ok(tx)
         }
     }
