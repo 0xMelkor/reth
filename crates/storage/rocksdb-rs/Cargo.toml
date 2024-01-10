@@ -13,7 +13,9 @@ name = "reth_rocksdb"
 
 [dependencies]
 thiserror.workspace = true
-rocksdb = {version = "0.21.0", features = ["multi-threaded-cf"]}
+rocksdb = { path = "/Users/melkor/Documents/projects/rust-rocksdb-fork/rust-rocksdb", features = [
+    "multi-threaded-cf",
+] }
 reth-interfaces.workspace = true
 
 # TODO: Benches

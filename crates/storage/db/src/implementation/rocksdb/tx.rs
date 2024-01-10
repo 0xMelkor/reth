@@ -26,14 +26,16 @@ impl DbTx for Tx {
     type DupCursor<T: DupSort> = Cursor<T>;
 
     fn get<T: Table>(&self, key: T::Key) -> Result<Option<T::Value>, DatabaseError> {
-        let key = key.encode().as_ref().to_vec();
-        let res = self.inner.get(key)?;
+        let key = key.encode();
+        // TODO: Get rid of the error!!
+        let res = self.inner.get(key.as_ref()).map_err(|e| DatabaseError::Read(-144))?;
         let value = res.map(|bytes| Decompress::decompress_owned(bytes)).transpose();
         value
     }
 
     fn commit(self) -> Result<bool, DatabaseError> {
-        Ok(true)
+        // TODO: Better mapping for the error
+        self.inner.commit().map_err(|e| DatabaseError::Commit(-1000))
     }
 
     fn abort(self) {}
