@@ -2,7 +2,7 @@ use reth_interfaces::db::DatabaseError;
 use reth_rocksdb::Transaction;
 
 use crate::{
-    table::{DupSort, Table, TableImporter, Encode, Decompress},
+    table::{DupSort, Table, TableImporter, Encode, Decompress, Compress},
     transaction::{DbTx, DbTxMut},
 };
 
@@ -35,7 +35,7 @@ impl DbTx for Tx {
 
     fn commit(self) -> Result<bool, DatabaseError> {
         // TODO: Better mapping for the error
-        self.inner.commit().map_err(|e| DatabaseError::Commit(-1000))
+        self.inner.commit().map_err(|_| DatabaseError::Commit(-1000))
     }
 
     fn abort(self) {}
@@ -57,8 +57,11 @@ impl DbTxMut for Tx {
     type CursorMut<T: Table> = Cursor<T>;
     type DupCursorMut<T: DupSort> = Cursor<T>;
 
-    fn put<T: Table>(&self, _key: T::Key, _value: T::Value) -> Result<(), DatabaseError> {
-        Ok(())
+    fn put<T: Table>(&self, key: T::Key, value: T::Value) -> Result<(), DatabaseError> {
+        let key = key.encode();
+        let value = value.compress();
+        // TODO: Better mapping for the error
+        self.inner.put(key.as_ref(), value.as_ref()).map_err(|_| DatabaseError::Commit(-1000))
     }
 
     fn delete<T: Table>(

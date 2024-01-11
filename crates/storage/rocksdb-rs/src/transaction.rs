@@ -34,6 +34,19 @@ impl Transaction {
         }
     }
 
+    pub fn put(&self, key: &[u8], value: &[u8]) -> Result<(), rocksdb::Error> {
+        match &self.inner {
+            TransactionInner::RW(tx) => {
+                // TODO: Get rid of the unwrap
+                let tx = tx.lock().unwrap();
+                tx.put(key, value)
+            }
+            TransactionInner::RO(snap) => {
+                unreachable!("RW transactions only");
+            }
+        }
+    }
+
     pub fn commit(self) -> Result<bool, rocksdb::Error> {
         match self.inner {
             TransactionInner::RW(tx) => {
