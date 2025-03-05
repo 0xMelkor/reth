@@ -3212,6 +3212,7 @@ dependencies = [
  "reth-node-ethereum",
  "reth-payload-builder",
  "reth-primitives",
+ "tokio",
  "tracing",
 ]
 

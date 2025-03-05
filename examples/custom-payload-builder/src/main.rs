@@ -74,8 +74,12 @@ where
             payload_builder,
         );
 
-        let (payload_service, payload_builder) =
-            PayloadBuilderService::new(payload_generator, ctx.provider().canonical_state_stream());
+        let (_, better_rx) = tokio::sync::broadcast::channel(16);
+        let (payload_service, payload_builder) = PayloadBuilderService::new(
+            payload_generator,
+            ctx.provider().canonical_state_stream(),
+            better_rx,
+        );
 
         ctx.task_executor()
             .spawn_critical("custom payload builder service", Box::pin(payload_service));

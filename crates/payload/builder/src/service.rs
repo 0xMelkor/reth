@@ -110,6 +110,7 @@ where
 pub struct PayloadBuilderHandle<T: PayloadTypes> {
     /// Sender half of the message channel to the [`PayloadBuilderService`].
     to_service: mpsc::UnboundedSender<PayloadServiceCommand<T>>,
+    better_payloads: broadcast::Receiver<Arc<T::BuiltPayload>>,
 }
 
 impl<T: PayloadTypes> PayloadBuilderHandle<T> {
@@ -117,8 +118,11 @@ impl<T: PayloadTypes> PayloadBuilderHandle<T> {
     ///
     /// Note: this is only used internally by the [`PayloadBuilderService`] to manage the payload
     /// building flow See [`PayloadBuilderService::poll`] for implementation details.
-    pub const fn new(to_service: mpsc::UnboundedSender<PayloadServiceCommand<T>>) -> Self {
-        Self { to_service }
+    pub const fn new(
+        to_service: mpsc::UnboundedSender<PayloadServiceCommand<T>>,
+        better_payloads: broadcast::Receiver<Arc<T::BuiltPayload>>,
+    ) -> Self {
+        Self { to_service, better_payloads }
     }
 
     /// Sends a message to the service to start building a new payload for the given payload.
@@ -166,6 +170,11 @@ impl<T: PayloadTypes> PayloadBuilderHandle<T> {
         Ok(PayloadEvents { receiver: rx.await? })
     }
 
+    /// Returns a new receiver for the better payloads.
+    fn subscribe_better_payloads(&self) -> broadcast::Receiver<Arc<T::BuiltPayload>> {
+        self.better_payloads.resubscribe()
+    }
+
     /// Returns the payload attributes associated with the given identifier.
     ///
     /// Note: this returns the attributes of the payload and does not resolve the job.
@@ -184,7 +193,10 @@ where
     T: PayloadTypes,
 {
     fn clone(&self) -> Self {
-        Self { to_service: self.to_service.clone() }
+        Self {
+            to_service: self.to_service.clone(),
+            better_payloads: self.better_payloads.resubscribe(),
+        }
     }
 }
 
@@ -212,6 +224,8 @@ where
     service_tx: mpsc::UnboundedSender<PayloadServiceCommand<T>>,
     /// Receiver half of the command channel.
     command_rx: UnboundedReceiverStream<PayloadServiceCommand<T>>,
+    /// Broadcast sender that emits whenever a better payload is built.
+    better_payloads: broadcast::Receiver<Arc<T::BuiltPayload>>,
     /// Metrics for the payload builder service
     metrics: PayloadBuilderServiceMetrics,
     /// Chain events notification stream
@@ -237,7 +251,11 @@ where
     /// This also takes a stream of chain events that will be forwarded to the generator to apply
     /// additional logic when new state is committed. See also
     /// [`PayloadJobGenerator::on_new_state`].
-    pub fn new(generator: Gen, chain_events: St) -> (Self, PayloadBuilderHandle<T>) {
+    pub fn new(
+        generator: Gen,
+        chain_events: St,
+        better_payloads: broadcast::Receiver<Arc<T::BuiltPayload>>,
+    ) -> (Self, PayloadBuilderHandle<T>) {
         let (service_tx, command_rx) = mpsc::unbounded_channel();
         let (payload_events, _) = broadcast::channel(PAYLOAD_EVENTS_BUFFER_SIZE);
 
@@ -249,6 +267,7 @@ where
             metrics: Default::default(),
             chain_events,
             payload_events,
+            better_payloads,
         };
 
         let handle = service.handle();
@@ -257,7 +276,7 @@ where
 
     /// Returns a handle to the service.
     pub fn handle(&self) -> PayloadBuilderHandle<T> {
-        PayloadBuilderHandle::new(self.service_tx.clone())
+        PayloadBuilderHandle::new(self.service_tx.clone(), self.better_payloads.resubscribe())
     }
 
     /// Returns true if the given payload is currently being built.
@@ -438,7 +457,7 @@ where
             }
 
             if !new_job {
-                return Poll::Pending
+                return Poll::Pending;
             }
         }
     }

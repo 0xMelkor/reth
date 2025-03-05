@@ -91,14 +91,21 @@ where
             .deadline(conf.deadline)
             .max_payload_tasks(conf.max_payload_tasks);
 
+        let (better_tx, better_rx) = tokio::sync::broadcast::channel(16);
+
         let payload_generator = BasicPayloadJobGenerator::with_builder(
             ctx.provider().clone(),
             ctx.task_executor().clone(),
             payload_job_config,
             payload_builder,
+            better_tx,
         );
-        let (payload_service, payload_service_handle) =
-            PayloadBuilderService::new(payload_generator, ctx.provider().canonical_state_stream());
+
+        let (payload_service, payload_service_handle) = PayloadBuilderService::new(
+            payload_generator,
+            ctx.provider().canonical_state_stream(),
+            better_rx,
+        );
 
         ctx.task_executor().spawn_critical("payload builder service", Box::pin(payload_service));
 

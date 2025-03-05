@@ -25,9 +25,10 @@ where
     /// Creates a new [`NoopPayloadBuilderService`].
     pub fn new() -> (Self, PayloadBuilderHandle<T>) {
         let (service_tx, command_rx) = mpsc::unbounded_channel();
+        let (_, better_rx) = tokio::sync::broadcast::channel(16);
         (
             Self { command_rx: UnboundedReceiverStream::new(command_rx) },
-            PayloadBuilderHandle::new(service_tx),
+            PayloadBuilderHandle::new(service_tx, better_rx),
         )
     }
 }

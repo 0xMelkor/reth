@@ -31,7 +31,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::{
-    sync::{oneshot, Semaphore},
+    sync::{broadcast, oneshot, Semaphore},
     time::{Interval, Sleep},
 };
 use tracing::{debug, trace, warn};
@@ -46,7 +46,10 @@ pub type HeaderForPayload<P> = <<P as BuiltPayload>::Primitives as NodePrimitive
 
 /// The [`PayloadJobGenerator`] that creates [`BasicPayloadJob`]s.
 #[derive(Debug)]
-pub struct BasicPayloadJobGenerator<Client, Tasks, Builder> {
+pub struct BasicPayloadJobGenerator<Client, Tasks, Builder>
+where
+    Builder: PayloadBuilder,
+{
     /// The client that can interact with the chain.
     client: Client,
     /// The task executor to spawn payload building tasks on.
@@ -61,11 +64,16 @@ pub struct BasicPayloadJobGenerator<Client, Tasks, Builder> {
     builder: Builder,
     /// Stored `cached_reads` for new payload jobs.
     pre_cached: Option<PrecachedState>,
+    /// Broadcast sender that emits whenever a better payload is built.
+    better_payloads: broadcast::Sender<Arc<Builder::BuiltPayload>>,
 }
 
 // === impl BasicPayloadJobGenerator ===
 
-impl<Client, Tasks, Builder> BasicPayloadJobGenerator<Client, Tasks, Builder> {
+impl<Client, Tasks, Builder> BasicPayloadJobGenerator<Client, Tasks, Builder>
+where
+    Builder: PayloadBuilder,
+{
     /// Creates a new [`BasicPayloadJobGenerator`] with the given config and custom
     /// [`PayloadBuilder`]
     pub fn with_builder(
@@ -73,6 +81,7 @@ impl<Client, Tasks, Builder> BasicPayloadJobGenerator<Client, Tasks, Builder> {
         executor: Tasks,
         config: BasicPayloadJobGeneratorConfig,
         builder: Builder,
+        better_payloads: broadcast::Sender<Arc<Builder::BuiltPayload>>,
     ) -> Self {
         Self {
             client,
@@ -81,6 +90,7 @@ impl<Client, Tasks, Builder> BasicPayloadJobGenerator<Client, Tasks, Builder> {
             config,
             builder,
             pre_cached: None,
+            better_payloads,
         }
     }
 
@@ -175,6 +185,7 @@ where
             payload_task_guard: self.payload_task_guard.clone(),
             metrics: Default::default(),
             builder: self.builder.clone(),
+            better_payloads: self.better_payloads.clone(),
         };
 
         // start the first job right away
@@ -311,6 +322,8 @@ where
     interval: Interval,
     /// The best payload so far and its state.
     best_payload: PayloadState<Builder::BuiltPayload>,
+    /// Broadcast sender that emits whenever a better payload is built.
+    better_payloads: broadcast::Sender<Arc<Builder::BuiltPayload>>,
     /// Receiver for the block that is currently being built.
     pending_block: Option<PendingPayload<Builder::BuiltPayload>>,
     /// Restricts how many generator tasks can be executed at once.
@@ -344,15 +357,22 @@ where
         let guard = self.payload_task_guard.clone();
         let payload_config = self.config.clone();
         let best_payload = self.best_payload.payload().cloned();
+        let better_payloads = self.better_payloads.clone();
         self.metrics.inc_initiated_payload_builds();
         let cached_reads = self.cached_reads.take().unwrap_or_default();
         let builder = self.builder.clone();
+
         self.executor.spawn_blocking(Box::pin(async move {
             // acquire the permit for executing the task
             let _permit = guard.acquire().await;
             let args =
                 BuildArguments { cached_reads, config: payload_config, cancel, best_payload };
             let result = builder.try_build(args);
+
+            if let Ok(BuildOutcome::Better { payload, .. }) = &result {
+                let _ = better_payloads.send(Arc::new(payload.clone()));
+            }
+
             let _ = tx.send(result);
         }));
 

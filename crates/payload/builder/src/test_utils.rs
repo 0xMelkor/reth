@@ -33,7 +33,8 @@ where
             BuiltPayload = EthBuiltPayload,
         > + 'static,
 {
-    PayloadBuilderService::new(Default::default(), futures_util::stream::empty())
+    let (_, better_rx) = tokio::sync::broadcast::channel(16);
+    PayloadBuilderService::new(Default::default(), futures_util::stream::empty(), better_rx)
 }
 
 /// Creates a new [`PayloadBuilderService`] for testing purposes and spawns it in the background.

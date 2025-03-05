@@ -209,6 +209,7 @@ mod tests {
 
         let (sync_metrics_tx, _sync_metrics_rx) = unbounded_channel();
         let (tx, _rx) = unbounded_channel();
+        let (_, better_payloads_rx) = tokio::sync::broadcast::channel(16);
         let _eth_service = EngineService::new(
             consensus,
             executor_factory,
@@ -220,7 +221,7 @@ mod tests {
             provider_factory,
             blockchain_db,
             pruner,
-            PayloadBuilderHandle::new(tx),
+            PayloadBuilderHandle::new(tx, better_payloads_rx),
             engine_payload_validator,
             TreeConfig::default(),
             Box::new(NoopInvalidBlockHook::default()),
